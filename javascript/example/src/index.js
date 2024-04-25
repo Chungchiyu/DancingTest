@@ -6,6 +6,9 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import URDFManipulator from '../../src/urdf-manipulator-element.js';
+import * as math from 'mathjs';
+import { LoadingManager } from 'three';
+import URDFLoader from '../../src/URDFLoader.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -37,22 +40,22 @@ const setColor = color => {
 
 // Events
 // toggle checkbox
-limitsToggle.addEventListener('click', () => {
-    limitsToggle.classList.toggle('checked');
-    viewer.ignoreLimits = limitsToggle.classList.contains('checked');
-});
+// limitsToggle.addEventListener('click', () => {
+//     limitsToggle.classList.toggle('checked');
+//     viewer.ignoreLimits = limitsToggle.classList.contains('checked');
+// });
 
-radiansToggle.addEventListener('click', () => {
-    radiansToggle.classList.toggle('checked');
-    Object
-        .values(sliders)
-        .forEach(sl => sl.update());
-});
+// radiansToggle.addEventListener('click', () => {
+//     radiansToggle.classList.toggle('checked');
+//     Object
+//         .values(sliders)
+//         .forEach(sl => sl.update());
+// });
 
-collisionToggle.addEventListener('click', () => {
-    collisionToggle.classList.toggle('checked');
-    viewer.showCollision = collisionToggle.classList.contains('checked');
-});
+// collisionToggle.addEventListener('click', () => {
+//     collisionToggle.classList.toggle('checked');
+//     viewer.showCollision = collisionToggle.classList.contains('checked');
+// });
 
 autocenterToggle.addEventListener('click', () => {
     autocenterToggle.classList.toggle('checked');
@@ -161,7 +164,8 @@ viewer.addEventListener('urdf-processed', () => {
             const slider = li.querySelector('input[type="range"]');
             const input = li.querySelector('input[type="number"]');
             li.update = () => {
-                const degMultiplier = radiansToggle.classList.contains('checked') ? 1.0 : RAD2DEG;
+                // const degMultiplier = radiansToggle.classList.contains('checked') ? 1.0 : RAD2DEG;
+                const degMultiplier = RAD2DEG;
                 let angle = joint.angle;
 
                 if (joint.jointType === 'revolute' || joint.jointType === 'continuous') {
@@ -209,12 +213,15 @@ viewer.addEventListener('urdf-processed', () => {
 
             slider.addEventListener('input', () => {
                 viewer.setJointValue(joint.name, slider.value);
+                animToggle.classList.remove('checked');
                 li.update();
             });
 
             input.addEventListener('change', () => {
-                const degMultiplier = radiansToggle.classList.contains('checked') ? 1.0 : RAD2DEG;
+                // const degMultiplier = radiansToggle.classList.contains('checked') ? 1.0 : RAD2DEG;
+                const degMultiplier = RAD2DEG;
                 viewer.setJointValue(joint.name, input.value * degMultiplier);
+                animToggle.classList.remove('checked');
                 li.update();
             });
 
@@ -289,35 +296,77 @@ document.addEventListener('WebComponentsReady', () => {
 
 });
 
+let j = 0, k = 0;
+let t_now, t_prev = 0;
+var frame;
 // init 2D UI and animation
 const updateAngles = () => {
 
     if (!viewer.setJointValue) return;
-
+    var ul = document.querySelector(".appendList");
+    if (ul.children.length < 2) return;
     // reset everything to 0 first
-    const resetJointValues = viewer.angles;
-    for (const name in resetJointValues) resetJointValues[name] = 0;
-    viewer.setJointValues(resetJointValues);
+    // const resetJointValues = viewer.angles;
+    // for (const name in resetJointValues) resetJointValues[name] = 0;
+    // viewer.setJointValues(resetJointValues);
 
     // animate the legs
-    const time = Date.now() / 3e2;
-    for (let i = 1; i <= 6; i++) {
+    t_now = Date.now();
+    let frameRate = 24.0;
+    
+    if (t_now - t_prev > 1000.0/frameRate) { // set frame rate to 20Hz
+        console.log("dt:"+(t_now - t_prev));
+        
+        if (k == 0) {
+            var j_set_1 = [];
+            ul.childNodes[j+1].querySelector('b').innerText.split(',').forEach( ele => j_set_1.push(+ele));
+            var j_set_2 = [];
+            ul.childNodes[j+2].querySelector('b').innerText.split(',').forEach( ele => j_set_2.push(+ele));
+            var speed = parseFloat(ul.childNodes[j+1].querySelector('input').value);
+            if (speed == '') return;
+            var isTime = ul.childNodes[j+1].querySelector('button').innerText == 's';
+            frame = frameGenerator(j_set_1, j_set_2, speed, isTime, frameRate);
+        }
+        
+        for (let i = 0; i < 6; i++) {
+            viewer.setJointValue(`joint_${ i+1 }`, frame[k][i]*DEG2RAD);
+        }
+        if (k < frame.length-1) k++;
+        else {
+            k = 0; j++;
+            if (j > ul.children.length-2) j = 0;
+        }
+        t_prev = t_now;
+    }
+};
 
-        const offset = i * Math.PI / 3;
-        const ratio = Math.max(0, Math.sin(time + offset));
-
-        viewer.setJointValue(`HP${ i }`, THREE.MathUtils.lerp(30, 0, ratio) * DEG2RAD);
-        viewer.setJointValue(`KP${ i }`, THREE.MathUtils.lerp(90, 150, ratio) * DEG2RAD);
-        viewer.setJointValue(`AP${ i }`, THREE.MathUtils.lerp(-30, -60, ratio) * DEG2RAD);
-
-        viewer.setJointValue(`TC${ i }A`, THREE.MathUtils.lerp(0, 0.065, ratio));
-        viewer.setJointValue(`TC${ i }B`, THREE.MathUtils.lerp(0, 0.065, ratio));
-
-        viewer.setJointValue(`W${ i }`, window.performance.now() * 0.001);
-
+function frameGenerator(pos1, pos2, value, isTime, fr) {
+    var frame = new Array(6);
+    var dP_dt;
+    var dP = math.subtract(pos2, pos1);
+    var max_steps = 2;
+    if (isTime)
+        dP_dt = math.dotDivide(dP, (value * fr));
+    else {
+        dP_dt = new Array(6);
+        for (let i = 0; i < 6; i++) dP_dt[i] = (dP[i] > 0 ? 1 : -1) * value / fr;
     }
 
-};
+    for (let i = 0; i < 6; i++) {
+        if (dP[i] != 0) frame[i] = math.range(pos1[i], pos2[i], dP_dt[i]).toArray();
+        else frame[i] = new Array(max_steps).fill(pos1[i]);
+        if (frame[i].length > max_steps) max_steps = frame[i].length;
+        // console.log(frame[i]);
+    }
+
+    for (let i = 0; i < 6; i++) {
+        if (frame[i].length < max_steps) {
+            frame[i] = math.reshape([frame[i], 
+                new Array(max_steps - frame[i].length).fill(frame[i][frame[i].length-1])], [max_steps]);
+        }
+    }
+    return math.transpose(frame);
+}
 
 const updateLoop = () => {
 
@@ -338,10 +387,10 @@ const updateList = () => {
             const urdf = e.target.getAttribute('urdf');
             const color = e.target.getAttribute('color');
 
-            viewer.up = '-Z';
+            viewer.up = '+Z';
             document.getElementById('up-select').value = viewer.up;
             viewer.urdf = urdf;
-            animToggle.classList.add('checked');
+            // animToggle.classList.add('checked');
             setColor(color);
 
         });
@@ -360,6 +409,71 @@ document.addEventListener('WebComponentsReady', () => {
     viewer.addEventListener('manipulate-start', e => animToggle.classList.remove('checked'));
     viewer.addEventListener('urdf-processed', e => updateAngles());
     updateLoop();
-    viewer.camera.position.set(-5.5, 3.5, 5.5);
+    viewer.camera.position.set(-5.5/3, 3.5/3, 5.5/3);
+    viewer.noAutoRecenter = true;
 
+});
+
+var addBtn = document.querySelector(".addBtn");
+var refreshBtn = document.querySelector('.refreshBtn');
+var speed_value = [0];
+
+addBtn.addEventListener('click', function(){
+    var ul = document.querySelector(".appendList");
+    var li = document.createElement("li");
+    var rmvBtn = document.createElement("button");
+
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.addEventListener('change', () => {
+        j = 0; k = 0;
+    });
+
+    var speedBtn = document.createElement('button');
+    speedBtn.innerText = 's';
+
+    speedBtn.addEventListener('click', () => {
+        if (speedBtn.innerText == 's') speedBtn.innerText = 'deg/s';
+        else speedBtn.innerText = 's';
+        j = 0; k = 0;
+    });
+
+    var joint_angle = [viewer.robot.joints.joint_1.angle,
+                        viewer.robot.joints.joint_2.angle,
+                        viewer.robot.joints.joint_3.angle,
+                        viewer.robot.joints.joint_4.angle,
+                        viewer.robot.joints.joint_5.angle,
+                        viewer.robot.joints.joint_6.angle]
+
+    li.appendChild(document.createElement('dt'));
+    li.querySelector('dt').appendChild(document.createTextNode(ul.children.length+1+':'));
+    li.appendChild(document.createElement('b'));
+    for (var angle in joint_angle) {
+        li.querySelector('b').appendChild(document.createTextNode(math.round(joint_angle[angle]*RAD2DEG,1)+','));
+    }
+    li.querySelector('b').innerText = li.querySelector('b').innerText.slice(0, -1);
+    li.appendChild(input);
+    li.appendChild(speedBtn);
+    li.appendChild(rmvBtn);
+    ul.appendChild(li);    
+
+    rmvBtn.innerHTML = '<i class="fa fa-remove"></i>';
+    rmvBtn.addEventListener('click', () => {
+        ul.removeChild(li);
+        updateJointSet(ul);
+        if (ul.children.length < 2) {
+            animToggle.classList.remove('checked');
+        }
+    });
+});
+
+const updateJointSet = (ul) => {
+    for (let i=0; i < ul.children.length; i++) {
+        ul.childNodes[i+1].querySelector('dt').innerText = i+1 + ':';
+    }
+};
+
+refreshBtn.addEventListener('click', () => {
+    j = 0;
+    k = 0;
 });

@@ -198,7 +198,7 @@ input:focus {
 /* list of joint sliders */
 #controls ul {
     flex: 1;
-    overflow-y: auto;
+    /* overflow-y: auto; */
 }
 
 #controls li {
@@ -282,4 +282,10 @@ input:focus {
     #controls {
         display: none;
     }
+}
+
+ul.appendList {
+    height: 40vh;
+    flex: 1;
+    overflow-y: auto;
 }
