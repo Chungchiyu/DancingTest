@@ -7,8 +7,6 @@ import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import URDFManipulator from '../../src/urdf-manipulator-element.js';
 import * as math from 'mathjs';
-import { LoadingManager } from 'three';
-import URDFLoader from '../../src/URDFLoader.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
