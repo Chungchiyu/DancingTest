@@ -7,6 +7,9 @@ import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import URDFManipulator from '../../src/urdf-manipulator-element.js';
 import * as math from 'mathjs';
+import Sortable, { Swap } from 'sortablejs';
+
+Sortable.mount(new Swap());
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -26,6 +29,8 @@ const controlsToggle = document.getElementById('toggle-controls');
 const animToggle = document.getElementById('do-animate');
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 1 / DEG2RAD;
+const isLoop = document.getElementById('is-loop');
+var loop = false;
 let sliders = {};
 
 // Global Functions
@@ -54,6 +59,14 @@ const setColor = color => {
 //     collisionToggle.classList.toggle('checked');
 //     viewer.showCollision = collisionToggle.classList.contains('checked');
 // });
+
+isLoop.addEventListener('click', () => {
+    isLoop.classList.toggle('checked');
+    if(isLoop.classList.contains('checked'))
+        loop = true;
+    else
+        loop = false;
+});
 
 autocenterToggle.addEventListener('click', () => {
     autocenterToggle.classList.toggle('checked');
@@ -212,6 +225,7 @@ viewer.addEventListener('urdf-processed', () => {
             slider.addEventListener('input', () => {
                 viewer.setJointValue(joint.name, slider.value);
                 animToggle.classList.remove('checked');
+                inputAngles();
                 li.update();
             });
 
@@ -219,6 +233,7 @@ viewer.addEventListener('urdf-processed', () => {
                 // const degMultiplier = radiansToggle.classList.contains('checked') ? 1.0 : RAD2DEG;
                 const degMultiplier = RAD2DEG;
                 viewer.setJointValue(joint.name, input.value * degMultiplier);
+                inputAngles();
                 animToggle.classList.remove('checked');
                 li.update();
             });
@@ -286,11 +301,11 @@ document.addEventListener('WebComponentsReady', () => {
         viewer.package = '../../../urdf';
     }
 
-    registerDragEvents(viewer, () => {
-        setColor('#263238');
-        animToggle.classList.remove('checked');
-        updateList();
-    });
+    // registerDragEvents(viewer, () => {
+    //     setColor('#263238');
+    //     animToggle.classList.remove('checked');
+    //     updateList();
+    // });
 
 });
 
@@ -316,13 +331,23 @@ const updateAngles = () => {
         console.log("dt:"+(t_now - t_prev));
         
         if (k == 0) {
-            var j_set_1 = [];
-            ul.childNodes[j+1].querySelector('b').innerText.split(',').forEach( ele => j_set_1.push(+ele));
-            var j_set_2 = [];
-            ul.childNodes[j+2].querySelector('b').innerText.split(',').forEach( ele => j_set_2.push(+ele));
-            var speed = parseFloat(ul.childNodes[j+1].querySelector('input').value);
+            var a = j, b = j + 1;
+            if (j == -1) {
+                if (loop) {
+                    a = ul.children.length-1;
+                    b = 0;
+                } else {
+                    a = 0;
+                    b = 1;
+                    j = 0;
+                }
+            }
+            var j_set_1 = ul.childNodes[a].querySelector('b').innerText.split('\n');
+            var j_set_2 = ul.childNodes[b].querySelector('b').innerText.split('\n');
+            var speed = parseFloat(ul.childNodes[a].querySelector('input').value);
             if (speed == '') return;
-            var isTime = ul.childNodes[j+1].querySelector('button').innerText == 's';
+            var isTime = ul.childNodes[a].querySelector('.bar').querySelector('button').innerText == 's';
+
             frame = frameGenerator(j_set_1, j_set_2, speed, isTime, frameRate);
         }
         
@@ -332,7 +357,7 @@ const updateAngles = () => {
         if (k < frame.length-1) k++;
         else {
             k = 0; j++;
-            if (j > ul.children.length-2) j = 0;
+            if (j > ul.children.length-2) j = -1;
         }
         t_prev = t_now;
     }
@@ -414,20 +439,28 @@ document.addEventListener('WebComponentsReady', () => {
 
 var addBtn = document.querySelector(".addBtn");
 var refreshBtn = document.querySelector('.refreshBtn');
+var clearBtn = document.querySelector(".clearBtn");
 var speed_value = [0];
 
 addBtn.addEventListener('click', function(){
     var ul = document.querySelector(".appendList");
     var li = document.createElement("li");
+    li.className = "list";
+
+    var bar = document.createElement('li');
+    bar.className = "bar";
     var rmvBtn = document.createElement("button");
+    rmvBtn.className = "rmvBtn btn";
 
     var input = document.createElement('input');
-    input.type = 'number';
+    input.type = 'speed';
+    input.value = 1;
     input.addEventListener('change', () => {
         j = 0; k = 0;
     });
 
     var speedBtn = document.createElement('button');
+    speedBtn.className = 'speed btn';
     speedBtn.innerText = 's';
 
     speedBtn.addEventListener('click', () => {
@@ -442,36 +475,127 @@ addBtn.addEventListener('click', function(){
                         viewer.robot.joints.joint_4.angle,
                         viewer.robot.joints.joint_5.angle,
                         viewer.robot.joints.joint_6.angle]
-
-    li.appendChild(document.createElement('dt'));
-    li.querySelector('dt').appendChild(document.createTextNode(ul.children.length+1+':'));
+    
     li.appendChild(document.createElement('b'));
     for (var angle in joint_angle) {
-        li.querySelector('b').appendChild(document.createTextNode(math.round(joint_angle[angle]*RAD2DEG,1)+','));
+        li.querySelector('b').appendChild(document.createTextNode(math.round(joint_angle[angle]*RAD2DEG,1)+'\n'));
     }
     li.querySelector('b').innerText = li.querySelector('b').innerText.slice(0, -1);
-    li.appendChild(input);
-    li.appendChild(speedBtn);
     li.appendChild(rmvBtn);
-    ul.appendChild(li);    
+    screenshot(li);
+    li.appendChild(bar);
+    bar.appendChild(document.createElement('strong'));
+    bar.querySelector('strong').appendChild(document.createTextNode(ul.children.length+1));
+    bar.appendChild(input);
+    bar.appendChild(speedBtn);
+    ul.appendChild(li);
 
+
+    var removeIndex;
     rmvBtn.innerHTML = '<i class="fa fa-remove"></i>';
     rmvBtn.addEventListener('click', () => {
+        removeIndex = Array.prototype.indexOf.call(ul.childNodes, li);
         ul.removeChild(li);
         updateJointSet(ul);
         if (ul.children.length < 2) {
             animToggle.classList.remove('checked');
         }
     });
+
+    li.addEventListener('click', () => {
+        var index = removeIndex;
+        let joint_angle;
+        if (index == 0) index = 1;
+        else if (index == undefined)
+            joint_angle = li.querySelector('b').innerText.split('\n');
+        else
+            joint_angle = ul.childNodes[index-1].querySelector('b').innerText.split('\n');
+        for (let i = 0; i < 6; i++) {
+            viewer.setJointValue(`joint_${ i+1 }`, joint_angle[i]*DEG2RAD);
+        }
+        
+        j = Array.prototype.indexOf.call(ul.childNodes, li);
+        cardIndex = j;
+        
+        if (ul.childNodes[j].classList.contains('highlighted')) {
+            ul.childNodes[j].classList.remove('highlighted');
+            isChangeAngle = false;
+        } else {
+            for (let i=0;i<ul.childNodes.length;i++) {
+                ul.childNodes[i].classList.remove('highlighted');
+            }
+            ul.childNodes[j].classList.add('highlighted');
+            isChangeAngle = true;
+        }
+        if (j == ul.childNodes.length-1) j = 0;
+        k = 0;
+    });
+
+    new Sortable(ul, {
+        ghostClass: 'highlighted', // The class applied to the hovered swap item
+        animation: 150
+    });
 });
+
+clearBtn.addEventListener('click', () => {
+    var ul = document.querySelector(".appendList");
+    ul.innerHTML = "";
+    animToggle.classList.remove('checked');
+    isChangeAngle = false;
+})
 
 const updateJointSet = (ul) => {
     for (let i=0; i < ul.children.length; i++) {
-        ul.childNodes[i+1].querySelector('dt').innerText = i+1 + ':';
+        ul.childNodes[i].querySelector('strong').innerText = i+1;
     }
 };
 
 refreshBtn.addEventListener('click', () => {
+    var ul = document.querySelector('.appendList');
+    updateJointSet(ul);
     j = 0;
     k = 0;
 });
+
+function screenshot(li)
+{
+    var img = new Image();
+    var camera = viewer.camera.clone();
+    camera.position.set(-5.5/5, 3.5/2.5, 5.5/5);
+    // camera.lookAt(0,0,0);
+    viewer.renderer.render(viewer.scene, camera);
+    img.src = viewer.renderer.domElement.toDataURL();
+    viewer.renderer.render(viewer.scene, viewer.camera);
+    img.style.width = '200px';
+    img.draggable = false;
+    li.appendChild(img);
+}
+
+var isChangeAngle = false;
+var cardIndex;
+
+function inputAngles()
+{
+    if (isChangeAngle) {
+        var ul = document.querySelector('.appendList');
+        var joint_angle = [viewer.robot.joints.joint_1.angle,
+            viewer.robot.joints.joint_2.angle,
+            viewer.robot.joints.joint_3.angle,
+            viewer.robot.joints.joint_4.angle,
+            viewer.robot.joints.joint_5.angle,
+            viewer.robot.joints.joint_6.angle];
+        
+        ul.childNodes[cardIndex].querySelector('b').innerText = "";
+        for (var angle in joint_angle) {
+            ul.childNodes[cardIndex].querySelector('b').innerText += math.round(joint_angle[angle]*RAD2DEG,1)+'\n';
+        }
+        ul.childNodes[cardIndex].querySelector('b').innerText = ul.childNodes[cardIndex].querySelector('b').innerText.slice(0, -1);
+    }
+}
+
+var homeBtn = document.querySelector('.homeBtn');
+homeBtn.addEventListener('click', () => {
+    var joint = new Array(6).fill(0);
+    for (let angle in joint)
+        viewer.setJointValue(`joint_${ parseInt(angle)+1 }`, joint[angle]);
+})

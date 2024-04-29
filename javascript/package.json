@@ -58,6 +58,7 @@
     "typescript": "^3.9.7"
   },
   "dependencies": {
-    "mathjs": "^12.4.2"
+    "mathjs": "^12.4.2",
+    "sortablejs": "^1.15.2"
   }
 }

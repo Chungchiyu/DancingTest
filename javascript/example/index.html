@@ -27,8 +27,9 @@
                 <!-- <div id="ignore-joint-limits" class="toggle">Ignore Joint Limits</div> -->
                 <!-- <div id="radians-toggle" class="toggle">Use Radians</div> -->
                 <div id="autocenter-toggle" class="toggle">Autocenter</div>
+                <div id="is-loop" class="toggle">Loop Animation</div>
                 <!-- <div id="collision-toggle" class="toggle">Show Collision</div> -->
-                <div id="do-animate" class="toggle">Animate Joints</div>
+                <div id="do-animate" class="toggle"><i class='fa fa-play-circle'></i> Play Animation</div>
                 <label>
                     Up Axis
                     <select id="up-select">
@@ -42,14 +43,18 @@
                 </label>
                 <ul></ul>
                 <div id="container">
-                    <div class="btn">
-                        <button class="addBtn">Add</button>
-                        <button class="refreshBtn">Refresh</button>
+                    <div class="button">
+                        <button class="addBtn btn">Add</button>
+                        <button class="refreshBtn btn">Refresh</button>
+                        <button class="clearBtn btn">Clear</button>
+                        <button class="homeBtn btn">Home</button>
                     </div>
-                    <ul class="appendList">
-    
-                    </ul>
                 </div>
+            </div>
+        </div>
+        <div class="container">
+            <div id="poseList">
+                <ul class="appendList"></ul>
             </div>
         </div>
         <urdf-viewer up="+Z" display-shadow tabindex="1"></urdf-viewer>
