@@ -1,16 +1,17 @@
-html, body, urdf-viewer {
+#right-side {
+    font-family: "Roboto", helvetica, arial, sans-serif;
+    animation: fade 3s ease;
+    color: white;
+    user-select: none;
+}
+
+urdf-viewer {
+    position: absolute;
     padding: 0;
     margin: 0;
     height: 100%;
     width: 100%;
     overflow: hidden;
-}
-
-body {
-    font-family: "Roboto", helvetica, arial, sans-serif;
-    animation: fade 3s ease;
-    color: white;
-    user-select: none;
 }
 
 select {

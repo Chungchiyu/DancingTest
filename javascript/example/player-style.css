@@ -1,0 +1,225 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f5f5f7;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden; /* Prevent page scroll during divider drag */
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+}
+
+/* #left-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#right-side {
+  flex: 1;
+  display: flex;
+} */
+
+.video-player {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+video {
+  width: 100%;
+  height: calc(100% - 60px); /* Adjust height to make room for controls */
+  background-color: #000;
+  outline: none;
+  display: none;
+}
+
+.controls {
+  position: absolute;
+  bottom: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 90%;
+  display: none;
+  transition: bottom 0.5s ease;
+  transition-delay: 1s;
+}
+
+#left-side:hover .controls {
+  /* 鼠标悬停在左侧画面时，将进度条的高度设为100%，让其从底部弹出 */
+  bottom: 20px;
+  transition-delay: 0s;
+}
+
+.progress-container {
+  width: 100%;
+  height: 60px;
+  background-color: rgba(0, 0, 0);
+  border: 4px solid orange; /* Orange border for progress bar */
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+  margin-bottom: 10px;
+  display: flex;
+  overflow: hidden;
+}
+
+.progress-thumbnail {
+  flex: 1;
+  background-color: #000;
+  border-right: 1px solid #333;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.6;
+}
+
+.progress-filled {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background-color: rgba(0, 122, 255, 0.3);
+}
+
+.progress-thumb {
+  width: 6px; /* Thicker white vertical line */
+  height: 56px;
+  background-color: #fff;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.control-buttons {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.control-buttons button {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  font-size: 18px;
+  padding: 10px;
+  margin: 0 5px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.control-buttons button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.centered-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  text-align: center;
+  background-color: #e0e0e0; /* Light grey background */
+  color: #555555; /* Dark grey text */
+  font-size: 60px;
+  width: 100%;
+  height: 100%;
+}
+
+.centered-button span {
+  font-size: 20px;
+  margin-top: 10px;
+  font-weight: bold;
+  color: #555555;
+}
+
+.loading {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: #ffffff;
+}
+
+.loading .spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.divider {
+  width: 6px; /* Thicker divider */
+  background-color: #ccc;
+  cursor: ew-resize;
+  position: relative;
+  z-index: 10;
+}
+
+.divider:hover {
+  cursor: ew-resize;
+}
+
+.divider .handle {
+  width: 30px; /* Bigger handle */
+  height: 30px;
+  background-color: #fff;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.close-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 30px;
+  height: 30px;
+  background-color: white; /* White button */
+  color: black;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px; /* Centered X */
+  font-weight: bold; /* Bold X */
+  display: none; /* Initially hidden */
+}

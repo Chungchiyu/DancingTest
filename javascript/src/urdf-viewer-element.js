@@ -143,6 +143,11 @@ class URDFViewer extends HTMLElement {
         controls.rotateSpeed = 2.0;
         controls.zoomSpeed = 5;
         controls.panSpeed = 2;
+        controls.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE
+        }
         controls.enableZoom = true;
         controls.enableDamping = false;
         controls.maxDistance = 50;

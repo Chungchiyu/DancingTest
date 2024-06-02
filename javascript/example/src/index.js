@@ -37,7 +37,7 @@ let sliders = {};
 const setColor = color => {
 
     document.body.style.backgroundColor = color;
-    viewer.highlightColor = '#' + (new THREE.Color(0xffffff)).lerp(new THREE.Color(color), 0.35).getHexString();
+    viewer.highlightColor = '#' + (new THREE.Color(0xE05749)).lerp(new THREE.Color(color), 0.35).getHexString();
 
 };
 
@@ -105,7 +105,7 @@ viewer.addEventListener('joint-mouseover', e => {
 
     const j = document.querySelector(`li[joint-name="${ e.detail }"]`);
     if (j) j.setAttribute('robot-hovered', true);
-
+    
 });
 
 viewer.addEventListener('joint-mouseout', e => {
@@ -433,6 +433,7 @@ document.addEventListener('WebComponentsReady', () => {
     viewer.addEventListener('urdf-processed', e => updateAngles());
     updateLoop();
     viewer.camera.position.set(-5.5/3, 3.5/3, 5.5/3);
+    // viewer.control
     viewer.noAutoRecenter = true;
 
 });
@@ -561,12 +562,17 @@ function screenshot(li)
 {
     var img = new Image();
     var camera = viewer.camera.clone();
-    camera.position.set(-5.5/5, 3.5/2.5, 5.5/5);
+    camera.position.set(viewer.camera.position.x,viewer.camera.position.y,viewer.camera.position.z);
     // camera.lookAt(0,0,0);
     viewer.renderer.render(viewer.scene, camera);
     img.src = viewer.renderer.domElement.toDataURL();
     viewer.renderer.render(viewer.scene, viewer.camera);
-    img.style.width = '200px';
+
+    // const canvas = document.createElement('canvas');
+    // canvas.getContext('2d').drawImage(img, 0.3*viewer.width, 0.3*viewer.clientHeight, 0.8*viewer.width, 0.8*viewer.clientHeight);
+    // img.src = canvas.toDataURL();
+
+    img.style.width = '10vw';
     img.draggable = false;
     li.appendChild(img);
 }
