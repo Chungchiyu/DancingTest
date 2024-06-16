@@ -2,7 +2,7 @@
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('three'), require('three/examples/jsm/controls/OrbitControls.js'), require('./URDFLoader.js')) :
     typeof define === 'function' && define.amd ? define(['three', 'three/examples/jsm/controls/OrbitControls.js', './URDFLoader'], factory) :
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.URDFViewer = factory(global.THREE, global.THREE, global.URDFLoader));
-}(this, (function (THREE, OrbitControls_js, URDFLoader) { 'use strict';
+})(this, (function (THREE, OrbitControls_js, URDFLoader) { 'use strict';
 
     function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -15,14 +15,12 @@
                     var d = Object.getOwnPropertyDescriptor(e, k);
                     Object.defineProperty(n, k, d.get ? d : {
                         enumerable: true,
-                        get: function () {
-                            return e[k];
-                        }
+                        get: function () { return e[k]; }
                     });
                 }
             });
         }
-        n['default'] = e;
+        n["default"] = e;
         return Object.freeze(n);
     }
 
@@ -64,7 +62,7 @@
         get displayShadow() { return this.hasAttribute('display-shadow') || false; }
         set displayShadow(val) { val ? this.setAttribute('display-shadow', '') : this.removeAttribute('display-shadow'); }
 
-        get ambientColor() { return this.getAttribute('ambient-color') || '#455A64'; }
+        get ambientColor() { return this.getAttribute('ambient-color') || '#8ea0a8'; }
         set ambientColor(val) { val ? this.setAttribute('ambient-color', val) : this.removeAttribute('ambient-color'); }
 
         get autoRedraw() { return this.hasAttribute('auto-redraw') || false; }
@@ -143,7 +141,7 @@
             renderer.setClearAlpha(0);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE__namespace.PCFSoftShadowMap;
-            renderer.outputEncoding = THREE__namespace.sRGBEncoding;
+            renderer.outputColorSpace = THREE__namespace.SRGBColorSpace;
 
             // Camera setup
             const camera = new THREE__namespace.PerspectiveCamera(75, 1, 0.1, 1000);
@@ -168,6 +166,11 @@
             controls.rotateSpeed = 2.0;
             controls.zoomSpeed = 5;
             controls.panSpeed = 2;
+            controls.mouseButtons = {
+                LEFT: THREE__namespace.MOUSE.ROTATE,
+                MIDDLE: THREE__namespace.MOUSE.DOLLY,
+                RIGHT: THREE__namespace.MOUSE.ROTATE
+            };
             controls.enableZoom = true;
             controls.enableDamping = false;
             controls.maxDistance = 50;
@@ -478,7 +481,7 @@
 
                                             if (m.map) {
 
-                                                m.map.encoding = THREE__namespace.GammaEncoding;
+                                                m.map.colorSpace = THREE__namespace.SRGBColorSpace;
 
                                             }
 
@@ -547,7 +550,7 @@
 
                 }
 
-                const loader = new URDFLoader__default['default'](manager);
+                const loader = new URDFLoader__default["default"](manager);
                 loader.packages = pkg;
                 loader.loadMeshCb = this.loadMeshFunc;
                 loader.fetchOptions = { mode: 'cors', credentials: 'same-origin' };
@@ -642,5 +645,5 @@
 
     return URDFViewer;
 
-})));
+}));
 //# sourceMappingURL=urdf-viewer-element.js.map
