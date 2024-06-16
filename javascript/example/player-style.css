@@ -53,6 +53,14 @@ video {
   display: none;
 }
 
+#canvas {
+  width: 100%;
+  height: calc(100% - 60px); /* Adjust height to make room for controls */
+  background-color: #000;
+  outline: none;
+  display: none;
+}
+
 .controls {
   position: absolute;
   bottom: -20%;
