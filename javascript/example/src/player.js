@@ -1,3 +1,4 @@
+import * as tf from '@tensorflow/tfjs';
 import * as posenet from '@tensorflow-models/posenet';
 
 const video = document.getElementById('video');
