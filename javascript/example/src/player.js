@@ -48,7 +48,13 @@ async function loadVideo(event) {
 }
 
 async function loadPoseNet() {
-  poseNet = await posenet.load();
+  try {
+    poseNet = await posenet.load();
+    console.log('Model loaded successfully');
+    // 其他初始化代码
+  } catch (err) {
+    console.error('Error loading the model', err);
+  }
   canvas.style.display = 'block';
   document.querySelector('.controls').style.display = 'flex';
   console.log("PoseNet Loaded.");
