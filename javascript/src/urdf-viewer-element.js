@@ -146,8 +146,8 @@ class URDFViewer extends HTMLElement {
         controls.mouseButtons = {
             LEFT: THREE.MOUSE.ROTATE,
             MIDDLE: THREE.MOUSE.DOLLY,
-            RIGHT: THREE.MOUSE.ROTATE
-        }
+            RIGHT: THREE.MOUSE.ROTATE,
+        };
         controls.enableZoom = true;
         controls.enableDamping = false;
         controls.maxDistance = 50;
