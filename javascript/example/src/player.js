@@ -1,6 +1,3 @@
-// import * as tf from '@tensorflow/tfjs';
-// import * as posenet from '@tensorflow-models/posenet';
-
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const progressContainer = document.getElementById('progress-container');
@@ -16,20 +13,158 @@ const leftSide = document.getElementById('left-side');
 const rightSide = document.getElementById('right-side');
 const handle = document.querySelector('.divider');
 
-let poseNet;
+let detector;
 let poseNetLoaded = false;
+let lastPoses = [];
+let videoAspectRatio = 16 / 9;
+let lowResCanvas;
+let lowResolution = 720;
+
+document.addEventListener('DOMContentLoaded', loadMoveNet);
+
+async function loadMoveNet() {
+  try {
+    const model = poseDetection.SupportedModels.MoveNet;
+    detector = await poseDetection.createDetector(model);
+    console.log('MoveNet loaded successfully');
+    poseNetLoaded = true;
+  } catch (err) {
+    console.error('Error loading the MoveNet model', err);
+  }
+}
+
+video.addEventListener('loadedmetadata', () => {
+  videoAspectRatio = video.videoWidth / video.videoHeight;
+  resizeCanvas();
+  createLowResCanvas();
+});
 
 video.addEventListener('timeupdate', updateProgress);
 progressContainer.addEventListener('mousedown', startProgressDrag);
-
-selectVideoButton.addEventListener('click', () => {
-  fileInput.click();
-});
-
+selectVideoButton.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', loadVideo);
 playPauseButton.addEventListener('click', playPause);
 restartButton.addEventListener('click', restart);
 closeButton.addEventListener('click', closeVideo);
+
+function createLowResCanvas() {
+  lowResCanvas = document.createElement('canvas');
+  const aspectRatio = video.videoWidth / video.videoHeight;
+  lowResCanvas.width = lowResolution;
+  lowResCanvas.height = Math.round(lowResolution / aspectRatio);
+}
+
+function resizeCanvas() {
+  const containerRect = leftSide.getBoundingClientRect();
+  const containerWidth = containerRect.width;
+  const containerHeight = containerRect.height;
+
+  let canvasWidth, canvasHeight;
+
+  if (containerWidth / containerHeight > videoAspectRatio) {
+    canvasHeight = containerHeight;
+    canvasWidth = canvasHeight * videoAspectRatio;
+  } else {
+    canvasWidth = containerWidth;
+    canvasHeight = canvasWidth / videoAspectRatio;
+  }
+
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+
+  canvas.style.position = 'absolute';
+  canvas.style.top = `${(containerHeight - canvasHeight) / 2}px`;
+
+  if (lastPoses.length > 0) {
+    drawPoses(lastPoses);
+  }
+}
+
+function drawPoses(poses) {
+  lastPoses = poses;
+  const context = canvas.getContext('2d');
+  
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  const scaleX = canvas.width / lowResCanvas.width;
+  const scaleY = canvas.height / lowResCanvas.height;
+
+  if (poses.length > 0) {
+    const pose = poses[0];
+
+    pose.keypoints.forEach(keypoint => {
+      if (keypoint.score > 0.2) {
+        context.beginPath();
+        context.arc(keypoint.x * scaleX, keypoint.y * scaleY, 5, 0, 2 * Math.PI);
+        context.fillStyle = 'red';
+        context.fill();
+      }
+    });
+
+    const adjacentPairs = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.MoveNet);
+    adjacentPairs.forEach(([i, j]) => {
+      const kp1 = pose.keypoints[i];
+      const kp2 = pose.keypoints[j];
+      if (kp1.score > 0.2 && kp2.score > 0.2) {
+        context.beginPath();
+        context.moveTo(kp1.x * scaleX, kp1.y * scaleY);
+        context.lineTo(kp2.x * scaleX, kp2.y * scaleY);
+        context.strokeStyle = 'red';
+        context.lineWidth = 2;
+        context.stroke();
+      }
+    });
+
+    const angles = calculateAllAngles(pose.keypoints);
+    displayAngles(context, angles);
+  }
+}
+
+function calculateAllAngles(keypoints) {
+  const angles = {};
+  
+  const angleDefinitions = [
+    { name: "Left Elbow", points: [5, 7, 9] },
+    { name: "Right Elbow", points: [6, 8, 10] },
+    { name: "Left Shoulder", points: [11, 5, 7] },
+    { name: "Right Shoulder", points: [12, 6, 8] },
+    { name: "Left Hip", points: [5, 11, 13] },
+    { name: "Right Hip", points: [6, 12, 14] },
+    { name: "Left Knee", points: [11, 13, 15] },
+    { name: "Right Knee", points: [12, 14, 16] }
+  ];
+
+  angleDefinitions.forEach(def => {
+    const [a, b, c] = def.points.map(i => keypoints[i]);
+    if (a.score > 0.2 && b.score > 0.2 && c.score > 0.2) {
+      angles[def.name] = calculateAngle(a, b, c);
+    }
+  });
+
+  return angles;
+}
+
+function calculateAngle(A, B, C) {
+  const AB = Math.sqrt(Math.pow(B.x - A.x, 2) + Math.pow(B.y - A.y, 2));
+  const BC = Math.sqrt(Math.pow(B.x - C.x, 2) + Math.pow(B.y - C.y, 2));
+  const AC = Math.sqrt(Math.pow(C.x - A.x, 2) + Math.pow(C.y - A.y, 2));
+  return Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB)) * (180 / Math.PI);
+}
+
+function displayAngles(context, angles) {
+  context.font = '14px Arial';
+  context.fillStyle = 'white';
+  context.strokeStyle = 'black';
+  context.lineWidth = 3;
+
+  let y = 30;
+  for (const [name, angle] of Object.entries(angles)) {
+    const text = `${name}: ${angle.toFixed(1)}°`;
+    context.strokeText(text, 10, y);
+    context.fillText(text, 10, y);
+    y += 20;
+  }
+}
 
 async function loadVideo(event) {
   const file = event.target.files[0];
@@ -43,62 +178,63 @@ async function loadVideo(event) {
     await generateThumbnails();
     closeButton.style.display = 'flex';
     event.target.value = '';
-    loadPoseNet();
+    canvas.style.display = 'block';
+    video.style.display = 'block';
+    document.querySelector('.controls').style.display = 'flex';
+    resizeCanvas();
+    createLowResCanvas();
+    estimatePoses();
   }
-}
-
-async function loadPoseNet() {
-  try {
-    poseNet = await posenet.load();
-    console.log('Model loaded successfully');
-    // 其他初始化代码
-  } catch (err) {
-    console.error('Error loading the model', err);
-  }
-  canvas.style.display = 'block';
-  document.querySelector('.controls').style.display = 'flex';
-  console.log("PoseNet Loaded.");
-  poseNetLoaded = true;
 }
 
 function playPause() {
   if (video.paused) {
     video.play();
+    requestAnimationFrame(estimatePoses);
   } else {
     video.pause();
+    requestAnimationFrame(estimatePoses);
   }
 }
 
 function restart() {
   video.currentTime = 0;
   video.play();
+  requestAnimationFrame(estimatePoses);
 }
 
 function updateProgress() {
   const progress = (video.currentTime / video.duration) * 98 + 1;
   progressFilled.style.width = `${progress}%`;
   progressThumb.style.left = `${progress}%`;
-  if (poseNetLoaded)
-    estimatePoses();
 }
 
 function startProgressDrag(e) {
   updateProgressWithEvent(e);
   document.addEventListener('mousemove', updateProgressWithEvent);
-  document.addEventListener('mouseup', () => {
-    document.removeEventListener('mousemove', updateProgressWithEvent);
-    document.body.style.userSelect = '';
-  });
+  document.addEventListener('mouseup', stopProgressDrag);
   document.body.style.userSelect = 'none';
+}
+
+function stopProgressDrag() {
+  document.removeEventListener('mousemove', updateProgressWithEvent);
+  document.removeEventListener('mouseup', stopProgressDrag);
+  document.body.style.userSelect = '';
+  if (video.paused) {
+    estimatePoses();
+  }
 }
 
 function updateProgressWithEvent(e) {
   const rect = progressContainer.getBoundingClientRect();
-  const x = e.clientX - rect.left + handle.style.width / 2;
+  const x = e.clientX - rect.left;
   const width = rect.width;
   const newTime = (x / width) * video.duration;
   video.currentTime = newTime;
   updateProgress();
+  if (video.paused) {
+    estimatePoses();
+  }
 }
 
 async function generateThumbnails() {
@@ -112,12 +248,11 @@ async function generateThumbnails() {
 
   for (let i = 0; i < thumbnailCount; i++) {
     const thumbnailTime = (i / thumbnailCount) * duration;
-
     await setVideoCurrentTime(video, thumbnailTime);
 
     const thumbnailDiv = document.createElement('div');
     thumbnailDiv.className = 'progress-thumbnail';
-    thumbnailDiv.style.display = 'none'; // Hide thumbnails initially
+    thumbnailDiv.style.display = 'none';
     progressContainer.insertBefore(thumbnailDiv, progressFilled);
 
     context.drawImage(video, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
@@ -125,11 +260,8 @@ async function generateThumbnails() {
   }
 
   loading.style.display = 'none';
-  canvas.style.display = 'block'; // Show video after generating thumbnails
-  document.querySelector('.controls').style.display = 'flex';
-
   const thumbnails = document.querySelectorAll('.progress-thumbnail');
-  thumbnails.forEach(thumbnail => thumbnail.style.display = 'block'); // Show thumbnails after generation
+  thumbnails.forEach(thumbnail => thumbnail.style.display = 'block');
 
   video.currentTime = 0;
 }
@@ -158,7 +290,7 @@ handle.addEventListener('mousedown', (event) => {
   isDragging = true;
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
-  document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+  document.body.style.userSelect = 'none';
 });
 
 function onDrag(event) {
@@ -170,6 +302,7 @@ function onDrag(event) {
   if (newWidth > 400 && newWidth < containerRect.width - 400) {
     leftSide.style.width = `${newWidth}px`;
     rightSide.style.width = `${containerRect.width - newWidth}px`;
+    resizeCanvas();
   }
 }
 
@@ -177,38 +310,25 @@ function stopDrag() {
   isDragging = false;
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
-  document.body.style.userSelect = ''; // Re-enable text selection after dragging
+  document.body.style.userSelect = '';
 }
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  createLowResCanvas();
+});
 
 async function estimatePoses() {
-  if (video.readyState >= 2) { // Ensure video is ready
-    const pose = await poseNet.estimateSinglePose(video, {
-      flipHorizontal: false,
-      decodingMethod: 'single-person'
+  if (video.readyState >= 2 && poseNetLoaded) {
+    const lowResContext = lowResCanvas.getContext('2d');
+    lowResContext.drawImage(video, 0, 0, lowResCanvas.width, lowResCanvas.height);
+    
+    const poses = await detector.estimatePoses(lowResCanvas, {
+      flipHorizontal: false
     });
-    console.log(pose);
-    drawPoses(pose);
+    drawPoses(poses);
   }
-}
-
-function drawPoses(pose) {
-  const context = canvas.getContext('2d');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  video.width = video.videoWidth;
-  video.height = video.videoHeight;
-
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  if (pose) {
-    pose.keypoints.forEach(keypoint => {
-      if (keypoint.score > 0.2) {
-        context.beginPath();
-        context.arc(keypoint.position.x, keypoint.position.y, 5, 0, 2 * Math.PI);
-        context.fillStyle = 'red';
-        context.fill();
-      }
-    });
+  if (!video.paused) {
+    requestAnimationFrame(estimatePoses);
   }
 }

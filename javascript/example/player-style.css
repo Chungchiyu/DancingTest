@@ -46,19 +46,22 @@ body {
 }
 
 video {
+  position: absolute;
   width: 100%;
   height: calc(100% - 60px); /* Adjust height to make room for controls */
   background-color: #000;
   outline: none;
   display: none;
+  z-index: 0;
 }
 
 #canvas {
+  position: absolute;
   width: 100%;
-  height: calc(100% - 60px); /* Adjust height to make room for controls */
-  background-color: #000;
-  outline: none;
-  display: none;
+  top: 0;
+  left: 0;
+  z-index: 1; /* 确保canvas在视频上层 */
+  pointer-events: none; /* 确保canvas不干扰用户与视频的交互 */
 }
 
 .controls {
