@@ -60,8 +60,16 @@ video {
   width: 100%;
   top: 0;
   left: 0;
-  z-index: 1; /* 确保canvas在视频上层 */
-  pointer-events: none; /* 确保canvas不干扰用户与视频的交互 */
+  z-index: 1;
+  cursor: pointer;
+  pointer-events: none;
+}
+#canvas:hover + .play-pause-animation {
+  display: block;
+  animation: fadeInOut 1s ease forwards;
+}.play-pause-animation::before {
+  border-width: 12px 0 12px 20px;
+  border-color: transparent transparent transparent white;
 }
 
 .controls {
@@ -76,10 +84,10 @@ video {
   display: none;
   transition: bottom 0.5s ease;
   transition-delay: 1s;
+  z-index: 2;
 }
 
 #left-side:hover .controls {
-  /* 鼠标悬停在左侧画面时，将进度条的高度设为100%，让其从底部弹出 */
   bottom: 20px;
   transition-delay: 0s;
 }
@@ -233,4 +241,52 @@ video {
   font-size: 18px; /* Centered X */
   font-weight: bold; /* Bold X */
   display: none; /* Initially hidden */
+}
+
+.play-pause-animation {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: none;
+  animation: fadeInOut 1s ease;
+}
+
+.play-pause-animation::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+}
+
+.play-pause-animation.play::before {
+  border-width: 12px 0 12px 20px;
+  border-color: transparent transparent transparent white;
+}
+
+.play-pause-animation.pause::before {
+  width: 10px;
+  height: 25px;
+  border-width: 0 6px;
+  border-color: white;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.progress-marker {
+  position: absolute;
+  width: 4px;
+  height: 20px;
+  background-color: red;
+  top: -5px;
+  cursor: pointer;
 }

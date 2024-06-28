@@ -6,7 +6,7 @@ const progressThumb = document.getElementById('progress-thumb');
 const loading = document.querySelector('.loading');
 const fileInput = document.getElementById('file-input');
 const selectVideoButton = document.getElementById('select-video');
-const playPauseButton = document.getElementById('play-pause');
+// const playPauseButton = document.getElementById('play-pause');
 const restartButton = document.getElementById('restart');
 const closeButton = document.getElementById('close-button');
 const leftSide = document.getElementById('left-side');
@@ -43,7 +43,7 @@ video.addEventListener('timeupdate', updateProgress);
 progressContainer.addEventListener('mousedown', startProgressDrag);
 selectVideoButton.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', loadVideo);
-playPauseButton.addEventListener('click', playPause);
+// playPauseButton.addEventListener('click', playPause);
 restartButton.addEventListener('click', restart);
 closeButton.addEventListener('click', closeVideo);
 
@@ -89,13 +89,17 @@ function drawPoses(poses) {
   const scaleX = canvas.width / lowResCanvas.width;
   const scaleY = canvas.height / lowResCanvas.height;
 
+  const minDimension = Math.min(canvas.width, canvas.height);
+  const keyPointRadius = minDimension * 0.01;
+  const lineWidth = minDimension * 0.005;
+
   if (poses.length > 0) {
     const pose = poses[0];
 
     pose.keypoints.forEach(keypoint => {
       if (keypoint.score > 0.2) {
         context.beginPath();
-        context.arc(keypoint.x * scaleX, keypoint.y * scaleY, 5, 0, 2 * Math.PI);
+        context.arc(keypoint.x * scaleX, keypoint.y * scaleY, keyPointRadius, 0, 2 * Math.PI);
         context.fillStyle = 'red';
         context.fill();
       }
@@ -110,7 +114,7 @@ function drawPoses(poses) {
         context.moveTo(kp1.x * scaleX, kp1.y * scaleY);
         context.lineTo(kp2.x * scaleX, kp2.y * scaleY);
         context.strokeStyle = 'red';
-        context.lineWidth = 2;
+        context.lineWidth = lineWidth;
         context.stroke();
       }
     });
@@ -179,6 +183,7 @@ async function loadVideo(event) {
     closeButton.style.display = 'flex';
     event.target.value = '';
     canvas.style.display = 'block';
+    canvas.style.pointerEvents = 'auto';
     video.style.display = 'block';
     document.querySelector('.controls').style.display = 'flex';
     resizeCanvas();
@@ -187,14 +192,24 @@ async function loadVideo(event) {
   }
 }
 
-function playPause() {
+const playPauseAnimation = document.getElementById('play-pause-animation');
+
+canvas.addEventListener('click', togglePlayPause);
+
+function togglePlayPause() {
   if (video.paused) {
     video.play();
+    playPauseAnimation.className = 'play-pause-animation play';
     requestAnimationFrame(estimatePoses);
   } else {
     video.pause();
-    requestAnimationFrame(estimatePoses);
+    playPauseAnimation.className = 'play-pause-animation pause';
   }
+  
+  playPauseAnimation.style.display = 'block';
+  setTimeout(() => {
+    playPauseAnimation.style.display = 'none';
+  }, 1000);
 }
 
 function restart() {
@@ -203,10 +218,40 @@ function restart() {
   requestAnimationFrame(estimatePoses);
 }
 
+const recordDataButton = document.getElementById('record-data');
+export let timeMarkers = [];
+
+recordDataButton.addEventListener('click', recordData);
+
+function recordData() {
+  const currentTime = video.currentTime;
+  const angles = calculateAllAngles(lastPoses[0].keypoints);
+  
+  timeMarkers.push({ time: currentTime, angles: angles });
+  addMarkerToProgressBar(currentTime);
+}
+
+function addMarkerToProgressBar(time) {
+  const progress = (time / video.duration) * 98 + 1;
+  const marker = document.createElement('div');
+  marker.className = 'progress-marker';
+  marker.style.left = `${progress}%`;
+  marker.addEventListener('click', (e) => {
+    e.stopPropagation();
+    video.currentTime = time;
+    updateProgress();
+    if (video.paused) {
+      estimatePoses();
+    }
+  });
+  progressContainer.appendChild(marker);
+}
+
 function updateProgress() {
-  const progress = (video.currentTime / video.duration) * 98 + 1;
-  progressFilled.style.width = `${progress}%`;
-  progressThumb.style.left = `${progress}%`;
+  const progress = (video.currentTime / video.duration) * 98 + 2;
+  let thickness = progressThumb.clientWidth;
+  progressFilled.style.width = `calc(${progress}% - ${thickness}px)`;
+  progressThumb.style.left = `calc(${progress}% - ${thickness}px)`; 
 }
 
 function startProgressDrag(e) {
@@ -278,6 +323,7 @@ function closeVideo() {
   video.src = "";
   selectVideoButton.style.display = 'flex';
   canvas.style.display = 'none';
+  video.style.display = 'none';
   document.querySelector('.controls').style.display = 'none';
   closeButton.style.display = 'none';
   const thumbnails = document.querySelectorAll('.progress-thumbnail');
@@ -327,6 +373,7 @@ async function estimatePoses() {
       flipHorizontal: false
     });
     drawPoses(poses);
+    console.log(video.paused);
   }
   if (!video.paused) {
     requestAnimationFrame(estimatePoses);
