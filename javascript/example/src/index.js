@@ -8,6 +8,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import URDFManipulator from '../../src/urdf-manipulator-element.js';
 import * as math from 'mathjs';
 import Sortable, { Swap } from 'sortablejs';
+import { degToRad } from 'three/src/math/MathUtils.js';
 
 Sortable.mount(new Swap());
 
@@ -62,7 +63,7 @@ const setColor = color => {
 
 isLoop.addEventListener('click', () => {
     isLoop.classList.toggle('checked');
-    if(isLoop.classList.contains('checked'))
+    if (isLoop.classList.contains('checked'))
         loop = true;
     else
         loop = false;
@@ -103,14 +104,14 @@ viewer.addEventListener('angle-change', e => {
 
 viewer.addEventListener('joint-mouseover', e => {
 
-    const j = document.querySelector(`li[joint-name="${ e.detail }"]`);
+    const j = document.querySelector(`li[joint-name="${e.detail}"]`);
     if (j) j.setAttribute('robot-hovered', true);
-    
+
 });
 
 viewer.addEventListener('joint-mouseout', e => {
 
-    const j = document.querySelector(`li[joint-name="${ e.detail }"]`);
+    const j = document.querySelector(`li[joint-name="${e.detail}"]`);
     if (j) j.removeAttribute('robot-hovered');
 
 });
@@ -118,7 +119,7 @@ viewer.addEventListener('joint-mouseout', e => {
 let originalNoAutoRecenter;
 viewer.addEventListener('manipulate-start', e => {
 
-    const j = document.querySelector(`li[joint-name="${ e.detail }"]`);
+    const j = document.querySelector(`li[joint-name="${e.detail}"]`);
     if (j) {
         j.scrollIntoView({ block: 'nearest' });
         window.scrollTo(0, 0);
@@ -161,8 +162,8 @@ viewer.addEventListener('urdf-processed', () => {
 
             const li = document.createElement('li');
             li.innerHTML =
-            `
-            <span title="${ joint.name }">${ joint.name }</span>
+                `
+            <span title="${joint.name}">${joint.name}</span>
             <input type="range" value="0" step="0.0001"/>
             <input type="number" step="0.0001" />
             `;
@@ -216,7 +217,7 @@ viewer.addEventListener('urdf-processed', () => {
                 case 'revolute':
                     break;
                 default:
-                    li.update = () => {};
+                    li.update = () => { };
                     input.remove();
                     slider.remove();
 
@@ -309,92 +310,151 @@ document.addEventListener('WebComponentsReady', () => {
 
 });
 
-let j = 0, k = 0;
-let t_now, t_prev = 0;
-var frame;
-// init 2D UI and animation
-const updateAngles = () => {
+document.addEventListener('jointsDataChanged', function () {
+    newCard();
+});
 
-    if (!viewer.setJointValue) return;
-    var ul = document.querySelector(".appendList");
-    if (ul.children.length < 2) return;
-    // reset everything to 0 first
-    // const resetJointValues = viewer.angles;
-    // for (const name in resetJointValues) resetJointValues[name] = 0;
-    // viewer.setJointValues(resetJointValues);
+window.newCard = function () {
+    // let jointAngles = Object.keys(viewer.robot.joints)
+    //     .slice(0, 6)
+    //     .map(key => {
+    //         let angleInDegrees = viewer.robot.joints[key].angle * RAD2DEG;
+    //         let formattedAngle = angleInDegrees.toFixed(1);
+    //         return formattedAngle.endsWith('.0') ? parseInt(angleInDegrees) : formattedAngle;
+    //     });
 
-    // animate the legs
-    t_now = Date.now();
-    let frameRate = 24.0;
-    
-    if (t_now - t_prev > 1000.0/frameRate) { // set frame rate to 20Hz
-        console.log("dt:"+(t_now - t_prev));
-        
-        if (k == 0) {
-            var a = j, b = j + 1;
-            if (j == -1) {
-                if (loop) {
-                    a = ul.children.length-1;
-                    b = 0;
-                } else {
-                    a = 0;
-                    b = 1;
-                    j = 0;
-                }
-            }
-            var j_set_1 = ul.childNodes[a].querySelector('b').innerText.split('\n');
-            var j_set_2 = ul.childNodes[b].querySelector('b').innerText.split('\n');
-            var speed = parseFloat(ul.childNodes[a].querySelector('input').value);
-            if (speed == '') return;
-            var isTime = ul.childNodes[a].querySelector('.bar').querySelector('button').innerText == 's';
+    let img = capture();
 
-            frame = frameGenerator(j_set_1, j_set_2, speed, isTime, frameRate);
+    const cardContainer = document.getElementById('poseCard-container');
+
+    const card = document.createElement('div');
+    card.className = 'ui-element';
+    card.innerHTML = `
+        <div class="angles">
+            ${window.jointsData.map(data => Object.entries(data.angles).map(([key, angle]) => `<div>${angle.toFixed(1)}</div>`).join(''))}
+        </div>
+        <div class="icon">
+            <img src="${img}" alt="Icon">
+        </div>
+        <div class="duration">
+            <div class="number">1</div>
+            <input value="${window.jointsData[0].time}"></input>
+            <button class="duration-btn">s</button>
+        </div>
+        <button class="close">X</button>
+    `;
+
+    card.querySelector('.close').addEventListener('click', (event) => {
+        event.stopPropagation();
+        cardContainer.removeChild(card);
+        const marker = window.progressContainer.querySelectorAll('.progress-marker');
+        window.progressContainer.removeChild(marker[parseInt(card.querySelector('.number').textContent) - 1]);
+        updateJointsSet();
+    });
+
+    card.querySelector('input').addEventListener('click', (event) => {
+        event.stopPropagation();
+    })
+
+    card.querySelector('.duration-btn').addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (this.textContent === 's') {
+            this.textContent = 'deg/s';
+        } else {
+            this.textContent = 's';
         }
-        
-        for (let i = 0; i < 6; i++) {
-            viewer.setJointValue(`joint_${ i+1 }`, frame[k][i]*DEG2RAD);
-        }
-        if (k < frame.length-1) k++;
-        else {
-            k = 0; j++;
-            if (j > ul.children.length-2) j = -1;
-        }
-        t_prev = t_now;
-    }
-};
+    });
 
-function frameGenerator(pos1, pos2, value, isTime, fr) {
-    var frame = new Array(6);
-    var dP_dt;
-    var dP = math.subtract(pos2, pos1);
-    var max_steps = 2;
-    if (isTime)
-        dP_dt = math.dotDivide(dP, (value * fr));
-    else {
-        dP_dt = new Array(6);
-        for (let i = 0; i < 6; i++) dP_dt[i] = (dP[i] > 0 ? 1 : -1) * value / fr;
-    }
+    card.addEventListener('click', () => {
+        cardContainer.childNodes.forEach(child => child.classList.remove('highlighted'));
+        card.classList.add('highlighted');
 
-    for (let i = 0; i < 6; i++) {
-        if (dP[i] != 0) frame[i] = math.range(pos1[i], pos2[i], dP_dt[i]).toArray();
-        else frame[i] = new Array(max_steps).fill(pos1[i]);
-        if (frame[i].length > max_steps) max_steps = frame[i].length;
-        // console.log(frame[i]);
-    }
+        window.video.currentTime = card.querySelector('input').value;
 
-    for (let i = 0; i < 6; i++) {
-        if (frame[i].length < max_steps) {
-            frame[i] = math.reshape([frame[i], 
-                new Array(max_steps - frame[i].length).fill(frame[i][frame[i].length-1])], [max_steps]);
+        for (let i = 0; i < 6; i++)
+            viewer.setJointValue(`joint_${i + 1}`, card.querySelector('.angles').innerText.split('\n')[i] * DEG2RAD);
+    });
+
+    let i = 0;
+    for (; i < cardContainer.childNodes.length; i++) {
+        if (window.jointsData[0].time < cardContainer.childNodes[i].querySelector('input').value) {
+            cardContainer.insertBefore(card, cardContainer.childNodes[i]);
+            break;
         }
     }
-    return math.transpose(frame);
+    if (i == cardContainer.childNodes.length) {
+        cardContainer.appendChild(card);
+    }
+
+    cardContainer.childNodes.forEach((card, index) => {
+        if (card.querySelector('.number')) {
+            card.querySelector('.number').innerText = index + 1;
+        }
+    });
+
+    new Sortable(cardContainer, {
+        ghostClass: 'highlighted', // The class applied to the hovered swap item
+        animation: 150,
+        filter: 'input'
+    });
+
+    updateJointsSet();
 }
+
+let jointsDataSet = [];
+function updateJointsSet() {
+    const cardContainer = document.getElementById('poseCard-container');
+
+    jointsDataSet = Array.from(cardContainer.childNodes).map(card => {
+        const time = parseFloat(card.querySelector('input').value);
+        const angles = [];
+
+        card.querySelector('.angles').querySelectorAll('div').forEach(angleElement => {
+            angles.push(parseFloat(angleElement.textContent));
+        });
+
+        return { time, angles };
+    });
+
+    console.log(jointsDataSet);
+}
+
+// init 2D UI and animation
+function updateArmPosition() {
+    // const currentTime = video.currentTime;
+    const currentTime = (Date.now() - startTime) / 1e3 + video.currentTime;
+
+    for (let i = 0; i < jointsDataSet.length - 1; i++) {
+        if (currentTime >= jointsDataSet[i].time && currentTime < jointsDataSet[i + 1].time) {
+            const t1 = jointsDataSet[i].time;
+            const t2 = jointsDataSet[i + 1].time;
+            const a1 = jointsDataSet[i].angles;
+            const a2 = jointsDataSet[i + 1].angles;
+
+            const interpolatedAngles = a1.map((angle1, index) => {
+                const angle2 = a2[index];
+                return angle1 + (angle2 - angle1) * (currentTime - t1) / (t2 - t1);
+            });
+
+            Object.keys(viewer.robot.joints).forEach((jointName, index) => {
+                viewer.setJointValue(jointName, interpolatedAngles[index] * DEG2RAD);
+            });
+
+            break;
+        }
+    }
+
+    if (currentTime > jointsDataSet[jointsDataSet.length - 1].time) {
+        animToggle.classList.toggle('checked');
+    }
+}
+
+let startTime;
 
 const updateLoop = () => {
 
     if (animToggle.classList.contains('checked')) {
-        updateAngles();
+        updateArmPosition();
     }
 
     requestAnimationFrame(updateLoop);
@@ -426,13 +486,20 @@ updateList();
 
 document.addEventListener('WebComponentsReady', () => {
 
-    animToggle.addEventListener('click', () => animToggle.classList.toggle('checked'));
+    animToggle.addEventListener('click', () => {
+        animToggle.classList.toggle('checked');
+        startTime = Date.now();
+        if (animToggle.classList.contains('checked'))
+            window.video.play();
+        else
+            window.video.pause();
+    });
 
     // stop the animation if user tried to manipulate the model
     viewer.addEventListener('manipulate-start', e => animToggle.classList.remove('checked'));
-    viewer.addEventListener('urdf-processed', e => updateAngles());
+    viewer.addEventListener('urdf-processed', e => updateArmPosition());
     updateLoop();
-    viewer.camera.position.set(-5.5/3, 3.5/3, 5.5/3);
+    viewer.camera.position.set(-5.5 / 3, 3.5 / 3, 5.5 / 3);
     // viewer.control
     viewer.noAutoRecenter = true;
 
@@ -441,167 +508,98 @@ document.addEventListener('WebComponentsReady', () => {
 var addBtn = document.querySelector(".addBtn");
 var refreshBtn = document.querySelector('.refreshBtn');
 var clearBtn = document.querySelector(".clearBtn");
-var speed_value = [0];
 
-addBtn.addEventListener('click', function(){
-    var ul = document.querySelector(".appendList");
-    var li = document.createElement("li");
-    li.className = "list";
+addBtn.addEventListener('click', function () {
+    let jointAngles = Object.keys(viewer.robot.joints)
+        .slice(0, 6)
+        .map(key => {
+            let angleInDegrees = viewer.robot.joints[key].angle * RAD2DEG;
+            let formattedAngle = angleInDegrees.toFixed(1);
+            return formattedAngle.endsWith('.0') ? parseInt(angleInDegrees) : formattedAngle;
+        });
 
-    var bar = document.createElement('li');
-    bar.className = "bar";
-    var rmvBtn = document.createElement("button");
-    rmvBtn.className = "rmvBtn btn";
+    let img = capture();
 
-    var input = document.createElement('input');
-    input.type = 'speed';
-    input.value = 1;
-    input.addEventListener('change', () => {
-        j = 0; k = 0;
+    const cardContainer = document.getElementById('poseCard-container');
+    const card = document.createElement('div');
+    card.className = 'ui-element';
+    card.innerHTML = `
+        <div class="angles">
+            <div>${jointAngles.map(angle => `<div>${angle}</div>`).join('')}</div>
+        </div>
+        <div class="icon">
+            <img src="${img}" alt="Icon">
+        </div>
+        <div class="duration">
+            <div class="number">${cardContainer.childNodes.length + 1}</div>
+            <input value="1"></input>
+            <button class="duration-btn">s</button>
+        </div>
+        <button class="close">X</button>
+    `;
+
+    card.querySelector('.close').addEventListener('click', (event) => {
+        event.stopPropagation();
+        cardContainer.removeChild(card);
     });
 
-    var speedBtn = document.createElement('button');
-    speedBtn.className = 'speed btn';
-    speedBtn.innerText = 's';
+    card.querySelector('input').addEventListener('click', (event) => {
+        event.stopPropagation();
+    })
 
-    speedBtn.addEventListener('click', () => {
-        if (speedBtn.innerText == 's') speedBtn.innerText = 'deg/s';
-        else speedBtn.innerText = 's';
-        j = 0; k = 0;
-    });
-
-    var joint_angle = [viewer.robot.joints.joint_1.angle,
-                        viewer.robot.joints.joint_2.angle,
-                        viewer.robot.joints.joint_3.angle,
-                        viewer.robot.joints.joint_4.angle,
-                        viewer.robot.joints.joint_5.angle,
-                        viewer.robot.joints.joint_6.angle]
-    
-    li.appendChild(document.createElement('b'));
-    for (var angle in joint_angle) {
-        li.querySelector('b').appendChild(document.createTextNode(math.round(joint_angle[angle]*RAD2DEG,1)+'\n'));
-    }
-    li.querySelector('b').innerText = li.querySelector('b').innerText.slice(0, -1);
-    li.appendChild(rmvBtn);
-    screenshot(li);
-    li.appendChild(bar);
-    bar.appendChild(document.createElement('strong'));
-    bar.querySelector('strong').appendChild(document.createTextNode(ul.children.length+1));
-    bar.appendChild(input);
-    bar.appendChild(speedBtn);
-    ul.appendChild(li);
-
-
-    var removeIndex;
-    rmvBtn.innerHTML = '<i class="fa fa-remove"></i>';
-    rmvBtn.addEventListener('click', () => {
-        removeIndex = Array.prototype.indexOf.call(ul.childNodes, li);
-        ul.removeChild(li);
-        updateJointSet(ul);
-        if (ul.children.length < 2) {
-            animToggle.classList.remove('checked');
-        }
-    });
-
-    li.addEventListener('click', () => {
-        var index = removeIndex;
-        let joint_angle;
-        if (index == 0) index = 1;
-        else if (index == undefined)
-            joint_angle = li.querySelector('b').innerText.split('\n');
-        else
-            joint_angle = ul.childNodes[index-1].querySelector('b').innerText.split('\n');
-        for (let i = 0; i < 6; i++) {
-            viewer.setJointValue(`joint_${ i+1 }`, joint_angle[i]*DEG2RAD);
-        }
-        
-        j = Array.prototype.indexOf.call(ul.childNodes, li);
-        cardIndex = j;
-        
-        if (ul.childNodes[j].classList.contains('highlighted')) {
-            ul.childNodes[j].classList.remove('highlighted');
-            isChangeAngle = false;
+    card.querySelector('.duration-btn').addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (this.textContent === 's') {
+            this.textContent = 'deg/s';
         } else {
-            for (let i=0;i<ul.childNodes.length;i++) {
-                ul.childNodes[i].classList.remove('highlighted');
-            }
-            ul.childNodes[j].classList.add('highlighted');
-            isChangeAngle = true;
+            this.textContent = 's';
         }
-        if (j == ul.childNodes.length-1) j = 0;
-        k = 0;
     });
 
-    new Sortable(ul, {
+    card.addEventListener('click', () => {
+        cardContainer.childNodes.forEach(child => child.classList.remove('highlighted'));
+        card.classList.add('highlighted');
+
+        for (let i = 0; i < 6; i++)
+            viewer.setJointValue(`joint_${i + 1}`, card.querySelector('.angles').innerText.split('\n')[i] * DEG2RAD);
+    });
+
+    cardContainer.appendChild(card);
+
+    new Sortable(cardContainer, {
         ghostClass: 'highlighted', // The class applied to the hovered swap item
         animation: 150
     });
+
+    updateJointsSet();
 });
 
 clearBtn.addEventListener('click', () => {
-    var ul = document.querySelector(".appendList");
-    ul.innerHTML = "";
+    const cardContainer = document.getElementById('poseCard-container');
+    cardContainer.innerHTML = "";
     animToggle.classList.remove('checked');
     isChangeAngle = false;
 })
 
-const updateJointSet = (ul) => {
-    for (let i=0; i < ul.children.length; i++) {
-        ul.childNodes[i].querySelector('strong').innerText = i+1;
-    }
-};
-
 refreshBtn.addEventListener('click', () => {
-    var ul = document.querySelector('.appendList');
-    updateJointSet(ul);
-    j = 0;
-    k = 0;
+    const cardContainer = document.getElementById('poseCard-container');
+    cardContainer.childNodes.forEach((card, index) => {
+        if (card.querySelector('.number')) {
+            card.querySelector('.number').innerText = index + 1;
+        }
+    });
 });
 
-function screenshot(li)
-{
-    var img = new Image();
-    var camera = viewer.camera.clone();
-    camera.position.set(viewer.camera.position.x,viewer.camera.position.y,viewer.camera.position.z);
-    // camera.lookAt(0,0,0);
-    viewer.renderer.render(viewer.scene, camera);
-    img.src = viewer.renderer.domElement.toDataURL();
+function capture() {
+    // const renderer = new THREE.WebGLRenderer();
     viewer.renderer.render(viewer.scene, viewer.camera);
-
-    // const canvas = document.createElement('canvas');
-    // canvas.getContext('2d').drawImage(img, 0.3*viewer.width, 0.3*viewer.clientHeight, 0.8*viewer.width, 0.8*viewer.clientHeight);
-    // img.src = canvas.toDataURL();
-
-    img.style.width = '10vw';
-    img.draggable = false;
-    li.appendChild(img);
-}
-
-var isChangeAngle = false;
-var cardIndex;
-
-function inputAngles()
-{
-    if (isChangeAngle) {
-        var ul = document.querySelector('.appendList');
-        var joint_angle = [viewer.robot.joints.joint_1.angle,
-            viewer.robot.joints.joint_2.angle,
-            viewer.robot.joints.joint_3.angle,
-            viewer.robot.joints.joint_4.angle,
-            viewer.robot.joints.joint_5.angle,
-            viewer.robot.joints.joint_6.angle];
-        
-        ul.childNodes[cardIndex].querySelector('b').innerText = "";
-        for (var angle in joint_angle) {
-            ul.childNodes[cardIndex].querySelector('b').innerText += math.round(joint_angle[angle]*RAD2DEG,1)+'\n';
-        }
-        ul.childNodes[cardIndex].querySelector('b').innerText = ul.childNodes[cardIndex].querySelector('b').innerText.slice(0, -1);
-    }
+    const img = viewer.renderer.domElement.toDataURL();
+    return img;
 }
 
 var homeBtn = document.querySelector('.homeBtn');
 homeBtn.addEventListener('click', () => {
     var joint = new Array(6).fill(0);
     for (let angle in joint)
-        viewer.setJointValue(`joint_${ parseInt(angle)+1 }`, joint[angle]);
+        viewer.setJointValue(`joint_${parseInt(angle) + 1}`, joint[angle]);
 })

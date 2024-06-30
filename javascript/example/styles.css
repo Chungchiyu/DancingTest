@@ -398,5 +398,106 @@ strong {
 }
 
 .highlighted {
-  background-color: rgba(255, 255, 255, 0.749);
+  background-color: rgba(255, 255, 255, 0.551);
+}
+
+#poseCard-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 10%;
+    overflow-y: scroll;
+    height: 95%;
+    flex: 1;
+}
+
+.ui-element {
+    position: relative;
+    display: inline-block;
+    padding: 0;
+    border-style: solid;
+    border-width: 1px;
+    border-color: white;
+    border-radius: 10px;
+    max-height: 130px;
+}
+
+.ui-element img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.angles, .duration, .close {
+    position: absolute;
+    color: white;
+}
+
+.angles {
+    top: 10px;
+    left: 8px;
+    font-size: 0.8em;
+}
+
+.icon img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.duration {
+    display: flex;
+    height: 20px;
+    width: 100%;
+    bottom: 10px;
+    /* padding-right: 10px; */
+}
+
+.duration .number {
+    display: inline-block;
+    margin-right: auto;
+    margin-left: 10px;
+    font-size: large;
+    font-weight: bold;
+    font-style: italic;
+}
+
+.duration input {
+    color: white;
+    border: none;
+    font-size: 1em;
+    text-align: center;
+    font-weight: 300;
+    background: rgba(255,255,255,0.25);
+    width: 1.5em;
+    margin-left: 2px;
+}
+
+.duration button {
+    margin-left: 2px;
+    margin-right: 10px;
+    background-color: #666;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    width: auto;
+}
+
+.close {
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: auto;
+    background-color: #555;
+    border: none;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: center;
+    padding: 3px;
 }

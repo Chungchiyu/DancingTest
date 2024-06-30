@@ -98,7 +98,7 @@ video {
   background-color: rgba(0, 0, 0);
   border: 4px solid orange; /* Orange border for progress bar */
   border-radius: 5px;
-  cursor: pointer;
+  cursor: ew-resize;
   position: relative;
   margin-bottom: 10px;
   display: flex;
@@ -284,9 +284,16 @@ video {
 
 .progress-marker {
   position: absolute;
-  width: 4px;
-  height: 20px;
+  width: 6px;
+  height: 30px;
   background-color: red;
   top: -5px;
+  border-radius: 3px;
   cursor: pointer;
+  transition: transform 0.3s ease; /* 添加过渡效果 */
+  transform-origin: center; /* 设置变换起点为中心 */
+}
+
+.progress-marker:hover {
+  transform: scale(2); /* 悬停时放大 */
 }

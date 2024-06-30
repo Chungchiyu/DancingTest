@@ -1,6 +1,6 @@
-const video = document.getElementById('video');
+window.video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const progressContainer = document.getElementById('progress-container');
+window.progressContainer = document.getElementById('progress-container');
 const progressFilled = document.getElementById('progress-filled');
 const progressThumb = document.getElementById('progress-thumb');
 const loading = document.querySelector('.loading');
@@ -12,6 +12,7 @@ const closeButton = document.getElementById('close-button');
 const leftSide = document.getElementById('left-side');
 const rightSide = document.getElementById('right-side');
 const handle = document.querySelector('.divider');
+const linkToggle = document.getElementById('linkage');
 
 let detector;
 let poseNetLoaded = false;
@@ -46,6 +47,8 @@ fileInput.addEventListener('change', loadVideo);
 // playPauseButton.addEventListener('click', playPause);
 restartButton.addEventListener('click', restart);
 closeButton.addEventListener('click', closeVideo);
+
+linkToggle.addEventListener('click', () => {linkToggle.classList.toggle('checked')});
 
 function createLowResCanvas() {
   lowResCanvas = document.createElement('canvas');
@@ -83,7 +86,7 @@ function resizeCanvas() {
 function drawPoses(poses) {
   lastPoses = poses;
   const context = canvas.getContext('2d');
-  
+
   context.clearRect(0, 0, canvas.width, canvas.height);
 
   const scaleX = canvas.width / lowResCanvas.width;
@@ -126,21 +129,30 @@ function drawPoses(poses) {
 
 function calculateAllAngles(keypoints) {
   const angles = {};
-  
+
+  // const angleDefinitions = [
+  //   { name: "Left Elbow", points: [5, 7, 9] },
+  //   { name: "Right Elbow", points: [6, 8, 10] },
+  //   { name: "Left Shoulder", points: [11, 5, 7] },
+  //   { name: "Right Shoulder", points: [12, 6, 8] },
+  //   { name: "Left Hip", points: [5, 11, 13] },
+  //   { name: "Right Hip", points: [6, 12, 14] },
+  //   { name: "Left Knee", points: [11, 13, 15] },
+  //   { name: "Right Knee", points: [12, 14, 16] }
+  // ];
+
   const angleDefinitions = [
-    { name: "Left Elbow", points: [5, 7, 9] },
-    { name: "Right Elbow", points: [6, 8, 10] },
-    { name: "Left Shoulder", points: [11, 5, 7] },
-    { name: "Right Shoulder", points: [12, 6, 8] },
-    { name: "Left Hip", points: [5, 11, 13] },
-    { name: "Right Hip", points: [6, 12, 14] },
-    { name: "Left Knee", points: [11, 13, 15] },
-    { name: "Right Knee", points: [12, 14, 16] }
+    { name: "A1", points: [6, 5, "horizontal"] },
+    { name: "A2", points: [6, 12, "vertical"] },
+    { name: "A3", points: [12, 6, 8] },
+    { name: "A4", points: [6, 8, 10] },
+    { name: "A5", points: [6, 12, 14] },
+    { name: "A6", points: [12, 14, 16] }
   ];
 
   angleDefinitions.forEach(def => {
-    const [a, b, c] = def.points.map(i => keypoints[i]);
-    if (a.score > 0.2 && b.score > 0.2 && c.score > 0.2) {
+    const [a, b, c] = def.points.map(i => typeof i === 'string' ? i : keypoints[i]);
+    if (a.score > 0.2 && b.score > 0.2) {
       angles[def.name] = calculateAngle(a, b, c);
     }
   });
@@ -148,11 +160,52 @@ function calculateAllAngles(keypoints) {
   return angles;
 }
 
-function calculateAngle(A, B, C) {
-  const AB = Math.sqrt(Math.pow(B.x - A.x, 2) + Math.pow(B.y - A.y, 2));
-  const BC = Math.sqrt(Math.pow(B.x - C.x, 2) + Math.pow(B.y - C.y, 2));
-  const AC = Math.sqrt(Math.pow(C.x - A.x, 2) + Math.pow(C.y - A.y, 2));
-  return Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB)) * (180 / Math.PI);
+function distance(p1, p2) {
+  return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+}
+
+function calculateAngle(...args) {
+
+  const A = args[0];
+  const B = args[1];
+
+  // Vector from A to B
+  let dx = B.x - A.x;
+  let dy = B.y - A.y;
+
+  if (args[2] === "horizontal") {
+
+    // Calculate angle in radians
+    let angleRad = Math.atan2(dy, dx);
+    
+    // Convert radians to degrees
+    let angleDeg = -angleRad * (180 / Math.PI);
+
+    return angleDeg;
+
+  } else if (args[2] === "vertical") {
+
+    // Calculate angle in radians
+    let angleRad = Math.atan2(dx, dy); // Swap dx and dy for vertical angle
+    
+    // Convert radians to degrees
+    let angleDeg = angleRad * (180 / Math.PI);
+
+    return angleDeg;
+
+  } else if (args.length === 3) {
+
+    const C = args[2];
+
+    const AB = distance(A, B);
+    const BC = distance(B, C);
+    const AC = distance(A, C);
+
+    // Calculate angle using law of cosines
+    return Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB)) * (180 / Math.PI);
+  } else {
+    throw new Error("Invalid number of arguments. Use either 2 or 3 arguments.");
+  }
 }
 
 function displayAngles(context, angles) {
@@ -200,12 +253,13 @@ function togglePlayPause() {
   if (video.paused) {
     video.play();
     playPauseAnimation.className = 'play-pause-animation play';
-    requestAnimationFrame(estimatePoses);
+    if (linkToggle.classList.contains('checked'))
+      requestAnimationFrame(estimatePoses);
   } else {
     video.pause();
     playPauseAnimation.className = 'play-pause-animation pause';
   }
-  
+
   playPauseAnimation.style.display = 'block';
   setTimeout(() => {
     playPauseAnimation.style.display = 'none';
@@ -219,16 +273,18 @@ function restart() {
 }
 
 const recordDataButton = document.getElementById('record-data');
-export let timeMarkers = [];
+window.jointsData = [];
 
 recordDataButton.addEventListener('click', recordData);
 
 function recordData() {
   const currentTime = video.currentTime;
   const angles = calculateAllAngles(lastPoses[0].keypoints);
-  
-  timeMarkers.push({ time: currentTime, angles: angles });
+
+  jointsData = [{ time: currentTime, angles: angles }];
   addMarkerToProgressBar(currentTime);
+
+  window.newCard();
 }
 
 function addMarkerToProgressBar(time) {
@@ -251,7 +307,9 @@ function updateProgress() {
   const progress = (video.currentTime / video.duration) * 98 + 2;
   let thickness = progressThumb.clientWidth;
   progressFilled.style.width = `calc(${progress}% - ${thickness}px)`;
-  progressThumb.style.left = `calc(${progress}% - ${thickness}px)`; 
+  progressThumb.style.left = `calc(${progress}% - ${thickness}px)`;
+  if (linkToggle.classList.contains('checked'))
+    estimatePoses();
 }
 
 function startProgressDrag(e) {
@@ -276,10 +334,10 @@ function updateProgressWithEvent(e) {
   const width = rect.width;
   const newTime = (x / width) * video.duration;
   video.currentTime = newTime;
-  updateProgress();
-  if (video.paused) {
-    estimatePoses();
-  }
+  // updateProgress();
+  // if (video.paused) {
+  //   estimatePoses();
+  // }
 }
 
 async function generateThumbnails() {
@@ -368,12 +426,11 @@ async function estimatePoses() {
   if (video.readyState >= 2 && poseNetLoaded) {
     const lowResContext = lowResCanvas.getContext('2d');
     lowResContext.drawImage(video, 0, 0, lowResCanvas.width, lowResCanvas.height);
-    
+
     const poses = await detector.estimatePoses(lowResCanvas, {
       flipHorizontal: false
     });
     drawPoses(poses);
-    console.log(video.paused);
   }
   if (!video.paused) {
     requestAnimationFrame(estimatePoses);
