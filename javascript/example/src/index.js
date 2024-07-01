@@ -349,6 +349,12 @@ window.newCard = function () {
         cardContainer.removeChild(card);
         const marker = window.progressContainer.querySelectorAll('.progress-marker');
         window.progressContainer.removeChild(marker[parseInt(card.querySelector('.number').textContent) - 1]);
+
+        cardContainer.childNodes.forEach((card, index) => {
+            if (card.querySelector('.number')) {
+                card.querySelector('.number').innerText = index + 1;
+            }
+        });
         updateJointsSet();
     });
 
@@ -422,7 +428,9 @@ function updateJointsSet() {
 // init 2D UI and animation
 function updateArmPosition() {
     // const currentTime = video.currentTime;
-    const currentTime = (Date.now() - startTime) / 1e3 + video.currentTime;
+    const currentTime = (Date.now() - startTime) / 1e3;
+
+    console.log(currentTime);
 
     for (let i = 0; i < jointsDataSet.length - 1; i++) {
         if (currentTime >= jointsDataSet[i].time && currentTime < jointsDataSet[i + 1].time) {
@@ -446,6 +454,7 @@ function updateArmPosition() {
 
     if (currentTime > jointsDataSet[jointsDataSet.length - 1].time) {
         animToggle.classList.toggle('checked');
+        window.video.pause();
     }
 }
 
@@ -488,7 +497,7 @@ document.addEventListener('WebComponentsReady', () => {
 
     animToggle.addEventListener('click', () => {
         animToggle.classList.toggle('checked');
-        startTime = Date.now();
+        startTime = Date.now() - window.video.currentTime * 1e3;
         if (animToggle.classList.contains('checked'))
             window.video.play();
         else
