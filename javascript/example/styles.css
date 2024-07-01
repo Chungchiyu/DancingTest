@@ -423,6 +423,7 @@ strong {
     border-color: white;
     border-radius: 10px;
     max-height: 130px;
+    cursor: pointer;
 }
 
 .ui-element img {
