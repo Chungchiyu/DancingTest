@@ -3,10 +3,11 @@
     animation: fade 3s ease;
     color: white;
     user-select: none;
+    width: 50%;
+    display: flex;
 }
 
 urdf-viewer {
-    position: absolute;
     padding: 0;
     margin: 0;
     height: 100%;
@@ -126,8 +127,6 @@ input:focus {
 
 #menu {
     position: absolute;
-    top: 0;
-    left: 0;
     display: flex;
     flex-direction: column;
     max-height: 100%;
@@ -305,98 +304,6 @@ input:focus {
     background: #555; 
   }
 
-#poseList {
-    position: absolute;
-    top: 0;
-    right: 0px;
-    display: flex;
-    flex-direction: column;
-    max-height: 96%;
-    margin: 10px;
-}
-
-ul.appendList {
-    position: relative;
-    height: auto;
-    flex: 1;
-    overflow-y: scroll;
-}
-
-li.list {
-    position: relative;
-    border-style: solid;
-    border-width: 1px;
-    border-color: white;
-    border-radius: 10px;
-    padding: 10px;
-    margin: 10px;
-    text-align: right;
-}
-li.list:hover {
-    opacity: 0.5;
-    cursor: pointer;
-}
-li b {
-    position: absolute;
-    left: 10px;
-    font-size: 0.8em;
-}
-.btn {
-    background-color: #555;
-    color: white;
-    font-size: 1em;
-    border: none;
-    cursor: pointer;
-    border-radius: 4px;
-    text-align: center;
-}
-.addBtn {
-    position: relative;
-}
-.refreshBtn {
-    position: relative;
-}
-.rmvBtn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-}
-.bar {
-    position: relative;
-    text-align: right;
-}
-.speed {
-    right: 10px;
-    background-color: #555;
-    color: white;
-    font-size: 1em;
-    border: none;
-    cursor: pointer;
-    border-radius: 1px;
-    text-align: center;
-    width: 3.3em;
-}
-
-input[type="speed"] {
-    color: white;
-    border: none;
-    font-size: 1em;
-    text-align: center;
-    font-weight: 300;
-    background: rgba(255,255,255,0.25);
-    margin-left: 3px;
-    margin-right: 3px;
-    width: 2em;
-}
-
-strong {
-    position: absolute;
-    left: 0;
-    bottom: 0.5px;
-    font-size: 1.2em;
-    font-style: italic;
-}
-
 .highlighted {
   background-color: rgba(255, 255, 255, 0.551);
 }
@@ -428,8 +335,8 @@ strong {
 
 .ui-element img {
     display: block;
-    width: 100%;
-    height: auto;
+    width: auto;
+    height: 100%;
 }
 
 .angles, .duration, .close {

@@ -9,28 +9,48 @@ const selectVideoButton = document.getElementById('select-video');
 // const playPauseButton = document.getElementById('play-pause');
 const restartButton = document.getElementById('restart');
 const closeButton = document.getElementById('close-button');
+const poseButton = document.getElementById('pose-button');
 const leftSide = document.getElementById('left-side');
 const rightSide = document.getElementById('right-side');
 const handle = document.querySelector('.divider');
 const linkToggle = document.getElementById('linkage');
+const linkRobot = document.getElementById('link-robot');
+const DEG2RAD = Math.PI / 180;
 
-let detector;
 let poseNetLoaded = false;
 let lastPoses = [];
 let videoAspectRatio = 16 / 9;
 let lowResCanvas;
 let lowResolution = 720;
 
-document.addEventListener('DOMContentLoaded', loadMoveNet);
+document.addEventListener('DOMContentLoaded', LoadMediaPipe);
 
-async function loadMoveNet() {
+let model;
+let detector;
+
+async function initPoseDetector() {
+  model = poseDetection.SupportedModels.BlazePose;
+  const detectorConfig = {
+    runtime: 'mediapipe',
+    modelType: 'full',
+    solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose'
+  };
+  return await poseDetection.createDetector(model, detectorConfig);
+}
+
+async function detectPose(detector, video) {
+  return await detector.estimatePoses(video, {
+    flipHorizontal: false
+  });
+}
+
+async function LoadMediaPipe() {
   try {
-    const model = poseDetection.SupportedModels.MoveNet;
-    detector = await poseDetection.createDetector(model);
-    console.log('MoveNet loaded successfully');
+    detector = await initPoseDetector();
+    console.log('MediaPipe loaded successfully');
     poseNetLoaded = true;
   } catch (err) {
-    console.error('Error loading the MoveNet model', err);
+    console.error('Error loading the MediaPipe model', err);
   }
 }
 
@@ -48,7 +68,8 @@ fileInput.addEventListener('change', loadVideo);
 restartButton.addEventListener('click', restart);
 closeButton.addEventListener('click', closeVideo);
 
-linkToggle.addEventListener('click', () => {linkToggle.classList.toggle('checked')});
+linkToggle.addEventListener('click', () => { linkToggle.classList.toggle('checked') });
+linkRobot.addEventListener('click', () => { linkRobot.classList.toggle('checked') });
 
 function createLowResCanvas() {
   lowResCanvas = document.createElement('canvas');
@@ -85,12 +106,12 @@ function resizeCanvas() {
 
 function drawPoses(poses) {
   lastPoses = poses;
-  const context = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d');
 
-  context.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const scaleX = canvas.width / lowResCanvas.width;
-  const scaleY = canvas.height / lowResCanvas.height;
+  const scaleX = canvas.width / video.videoWidth;
+  const scaleY = canvas.height / video.videoHeight;
 
   const minDimension = Math.min(canvas.width, canvas.height);
   const keyPointRadius = minDimension * 0.01;
@@ -99,31 +120,43 @@ function drawPoses(poses) {
   if (poses.length > 0) {
     const pose = poses[0];
 
-    pose.keypoints.forEach(keypoint => {
-      if (keypoint.score > 0.2) {
-        context.beginPath();
-        context.arc(keypoint.x * scaleX, keypoint.y * scaleY, keyPointRadius, 0, 2 * Math.PI);
-        context.fillStyle = 'red';
-        context.fill();
-      }
-    });
+    poses.forEach(pose => {
+      // 繪製關鍵點
+      pose.keypoints.forEach(keypoint => {
+        if (keypoint.score > 0.3) {
+          ctx.beginPath();
+          ctx.arc(keypoint.x * scaleX, keypoint.y * scaleY, keyPointRadius, 0, 2 * Math.PI);
+          ctx.fillStyle = 'red';
+          ctx.fill();
+        }
+      });
 
-    const adjacentPairs = poseDetection.util.getAdjacentPairs(poseDetection.SupportedModels.MoveNet);
-    adjacentPairs.forEach(([i, j]) => {
-      const kp1 = pose.keypoints[i];
-      const kp2 = pose.keypoints[j];
-      if (kp1.score > 0.2 && kp2.score > 0.2) {
-        context.beginPath();
-        context.moveTo(kp1.x * scaleX, kp1.y * scaleY);
-        context.lineTo(kp2.x * scaleX, kp2.y * scaleY);
-        context.strokeStyle = 'red';
-        context.lineWidth = lineWidth;
-        context.stroke();
+      // 繪製骨架
+      if (model) {
+        const connections = poseDetection.util.getAdjacentPairs(model);
+        connections.forEach(([i, j]) => {
+          const kp1 = pose.keypoints[i];
+          const kp2 = pose.keypoints[j];
+          if (kp1.score > 0.3 && kp2.score > 0.3) {
+            ctx.beginPath();
+            ctx.moveTo(kp1.x * scaleX, kp1.y * scaleY);
+            ctx.lineTo(kp2.x * scaleX, kp2.y * scaleY);
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+          }
+        });
       }
     });
 
     const angles = calculateAllAngles(pose.keypoints);
-    displayAngles(context, angles);
+    displayAngles(ctx, angles);
+
+    if (linkRobot.classList.contains('checked')) {
+      Object.keys(window.viewer.robot.joints).forEach((jointName, index) => {
+        window.viewer.setJointValue(jointName, Object.entries(angles)[index][1] * DEG2RAD);
+      });
+    }
   }
 }
 
@@ -177,7 +210,7 @@ function calculateAngle(...args) {
 
     // Calculate angle in radians
     let angleRad = Math.atan2(dy, dx);
-    
+
     // Convert radians to degrees
     let angleDeg = -angleRad * (180 / Math.PI);
 
@@ -187,7 +220,7 @@ function calculateAngle(...args) {
 
     // Calculate angle in radians
     let angleRad = Math.atan2(dx, dy); // Swap dx and dy for vertical angle
-    
+
     // Convert radians to degrees
     let angleDeg = angleRad * (180 / Math.PI);
 
@@ -234,6 +267,7 @@ async function loadVideo(event) {
     video.pause();
     await generateThumbnails();
     closeButton.style.display = 'flex';
+    poseButton.style.display = 'flex';
     event.target.value = '';
     canvas.style.display = 'block';
     canvas.style.pointerEvents = 'auto';
@@ -288,27 +322,27 @@ function recordData() {
 }
 
 function addMarkerToProgressBar(time) {
-  const progress = (time / video.duration) * 98 + 1;
+  const progress = (time / video.duration) * 99 + 1;
   const marker = document.createElement('div');
   marker.className = 'progress-marker';
-  marker.style.left = `${progress}%`;
-  marker.addEventListener('click', (e) => {
-    e.stopPropagation();
+  progressContainer.appendChild(marker);
+  marker.style.left = `calc(${progress}% - ${marker.clientWidth / 2}px)`;
+  marker.addEventListener('click', (event) => {
+    marker.addEventListener('mousedown', (event) => {
+      event.stopPropagation();
+    });
+    event.stopPropagation();
     video.currentTime = time;
     updateProgress();
-    if (video.paused) {
-      estimatePoses();
-    }
   });
-  progressContainer.appendChild(marker);
 }
 
 function updateProgress() {
-  const progress = (video.currentTime / video.duration) * 98 + 2;
+  const progress = (video.currentTime / video.duration) * 99 + 1;
   let thickness = progressThumb.clientWidth;
-  progressFilled.style.width = `calc(${progress}% - ${thickness}px)`;
-  progressThumb.style.left = `calc(${progress}% - ${thickness}px)`;
-  if (linkToggle.classList.contains('checked'))
+  progressFilled.style.width = `calc(${progress}% - ${thickness / 2}px)`;
+  progressThumb.style.left = `calc(${progress}% - ${thickness / 2}px)`;
+  if (linkToggle.classList.contains('checked') || video.paused)
     estimatePoses();
 }
 
@@ -334,10 +368,6 @@ function updateProgressWithEvent(e) {
   const width = rect.width;
   const newTime = (x / width) * video.duration;
   video.currentTime = newTime;
-  // updateProgress();
-  // if (video.paused) {
-  //   estimatePoses();
-  // }
 }
 
 async function generateThumbnails() {
@@ -384,8 +414,10 @@ function closeVideo() {
   video.style.display = 'none';
   document.querySelector('.controls').style.display = 'none';
   closeButton.style.display = 'none';
+  poseButton.style.display = 'none';
   const thumbnails = document.querySelectorAll('.progress-thumbnail');
   thumbnails.forEach(thumbnail => thumbnail.remove());
+  progressContainer.querySelectorAll('.progress-marker').forEach(mark => mark.remove());
 }
 
 let isDragging = false;
@@ -422,17 +454,41 @@ window.addEventListener('resize', () => {
   createLowResCanvas();
 });
 
+// async function estimatePoses() {
+//   console.log('estimation');
+//   if (video.readyState >= 2 && poseNetLoaded) {
+//     const lowResContext = lowResCanvas.getContext('2d');
+//     lowResContext.drawImage(video, 0, 0, lowResCanvas.width, lowResCanvas.height);
+
+//     const poses = await detector.estimatePoses(lowResCanvas, {
+//       flipHorizontal: false
+//     });
+//     drawPoses(poses);
+//   }
+//   if (!video.paused) {
+//     requestAnimationFrame(estimatePoses);
+//   }
+// }
+
 async function estimatePoses() {
+  console.log('estimation');
   if (video.readyState >= 2 && poseNetLoaded) {
     const lowResContext = lowResCanvas.getContext('2d');
     lowResContext.drawImage(video, 0, 0, lowResCanvas.width, lowResCanvas.height);
 
-    const poses = await detector.estimatePoses(lowResCanvas, {
-      flipHorizontal: false
-    });
+    const poses = await detectPose(detector, video);
     drawPoses(poses);
   }
   if (!video.paused) {
     requestAnimationFrame(estimatePoses);
   }
 }
+
+document.querySelector('.pose-button').addEventListener('click', () => {
+  document.querySelector('.modal').classList.toggle('show');
+  document.querySelector('.overlay').classList.toggle('show');
+});
+document.querySelector('.overlay').addEventListener('click', () => {
+  document.querySelector('.modal').classList.remove('show');
+  document.querySelector('.overlay').classList.remove('show');
+});

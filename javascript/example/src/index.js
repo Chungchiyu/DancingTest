@@ -17,7 +17,7 @@ customElements.define('urdf-viewer', URDFManipulator);
 // declare these globally for the sake of the example.
 // Hack to make the build work with webpack for now.
 // TODO: Remove this once modules or parcel is being used
-const viewer = document.querySelector('urdf-viewer');
+window.viewer = document.querySelector('urdf-viewer');
 
 const limitsToggle = document.getElementById('ignore-joint-limits');
 const collisionToggle = document.getElementById('collision-toggle');
@@ -587,8 +587,8 @@ clearBtn.addEventListener('click', () => {
     const cardContainer = document.getElementById('poseCard-container');
     cardContainer.innerHTML = "";
     animToggle.classList.remove('checked');
-    isChangeAngle = false;
-})
+    window.progressContainer.querySelectorAll('.progress-marker').forEach(mark => mark.remove());
+});
 
 refreshBtn.addEventListener('click', () => {
     const cardContainer = document.getElementById('poseCard-container');

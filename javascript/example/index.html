@@ -12,17 +12,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.2/pose.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.1/drawing_utils.js" crossorigin="anonymous"></script> -->
     <link href="./styles.css" type="text/css" rel="stylesheet" />
     <link href="./player-style.css" type="text/css" rel="stylesheet" />
     <script src="./src/redirect.js"></script>
 </head>
 
-<body>
+<body tabindex="0">
     <div class="container">
-        <div class="side" id="left-side" style="width: 50%;">
+        <div class="side" id="left-side">
             <div id="video-player" class="video-player">
                 <div id="select-video" class="centered-button">
                     <div>+</div>
@@ -46,17 +45,32 @@
                     Loading...
                 </div>
                 <div class="close-button" id="close-button">X</div>
+                <button class="pose-button" id="pose-button">+</button>
+                <div class="overlay"></div>
+                <div class="modal">
+                    <div class="fields">
+                        <div class="field">A1: 10, 11, 12</div>
+                        <div class="field">A2: 13, 14, 15</div>
+                        <div class="field">A3: 16, 17, 18</div>
+                        <div class="field">A4: 19, 20, 21</div>
+                        <div class="field">A5: 22, 23, 24</div>
+                        <div class="field">A6: 25, 26, 27</div>
+                    </div>
+                    <img src="https://miro.medium.com/v2/resize:fit:1400/format:webp/1*44fk0Hlvq7-b7SQksf6P1A.jpeg"
+                        alt="Diagram Image">
+                </div>
             </div>
         </div>
         <input type="file" id="file-input" accept="video/*" style="display: none;">
         <div class="divider">
             <div class="handle"></div>
         </div>
-        <div class="side" id="right-side" style="width: 50%;">
+        <div class="side" id="right-side">
             <urdf-viewer up="+Z" display-shadow tabindex="1"></urdf-viewer>
             <div id="menu">
                 <ul id="urdf-options" class="hidden">
-                    <li urdf="../../../urdf/Hiwin/hiwin_ra620_1621_support/urdf/ra620_1621.urdf" color="#3b3b3b">Hiwin</li>
+                    <li urdf="../../../urdf/Hiwin/hiwin_ra620_1621_support/urdf/ra620_1621.urdf" color="#3b3b3b">Hiwin
+                    </li>
                 </ul>
 
                 <div id="controls">
@@ -64,6 +78,7 @@
                     <div id="autocenter-toggle" class="toggle">Autocenter</div>
                     <div id="is-loop" class="toggle">Loop Animation</div>
                     <div id="linkage" class="toggle">Link to poseNet</div>
+                    <div id="link-robot" class="toggle">Link to robot</div>
                     <div id="do-animate" class="toggle"><i class='fa fa-play-circle'></i> Play Animation</div>
                     <label>
                         Up Axis
@@ -88,11 +103,6 @@
                 </div>
             </div>
             <div id="poseCard-container"></div>
-            <!-- <div id="container">
-                <div id="poseList">
-                    <ul class="appendList"></ul>
-                </div>
-            </div> -->
         </div>
     </div>
 
