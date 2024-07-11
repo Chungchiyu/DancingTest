@@ -1,3 +1,5 @@
+import { output } from "three/examples/jsm/nodes/Nodes.js";
+
 window.video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 window.progressContainer = document.getElementById('progress-container');
@@ -13,7 +15,7 @@ const poseButton = document.getElementById('pose-button');
 const leftSide = document.getElementById('left-side');
 const rightSide = document.getElementById('right-side');
 const handle = document.querySelector('.divider');
-const linkToggle = document.getElementById('linkage');
+const poseDetectToggle = document.getElementById('poseDetect');
 const linkRobot = document.getElementById('link-robot');
 const DEG2RAD = Math.PI / 180;
 
@@ -33,7 +35,12 @@ async function initPoseDetector() {
   const detectorConfig = {
     runtime: 'mediapipe',
     modelType: 'full',
-    solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose'
+    solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose',
+    enableSmoothing: true,
+    enableSegmentation: false,
+    smoothSegmentation: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
   };
   return await poseDetection.createDetector(model, detectorConfig);
 }
@@ -68,8 +75,15 @@ fileInput.addEventListener('change', loadVideo);
 restartButton.addEventListener('click', restart);
 closeButton.addEventListener('click', closeVideo);
 
-linkToggle.addEventListener('click', () => { linkToggle.classList.toggle('checked') });
-linkRobot.addEventListener('click', () => { linkRobot.classList.toggle('checked') });
+poseDetectToggle.addEventListener('click', () => { 
+  poseDetectToggle.classList.toggle('checked');
+  estimatePoses();
+ });
+
+linkRobot.addEventListener('click', () => { 
+  linkRobot.classList.toggle('checked');
+  estimatePoses();
+});
 
 function createLowResCanvas() {
   lowResCanvas = document.createElement('canvas');
@@ -121,7 +135,7 @@ function drawPoses(poses) {
     const pose = poses[0];
 
     poses.forEach(pose => {
-      // 繪製關鍵點
+      
       pose.keypoints.forEach(keypoint => {
         if (keypoint.score > 0.3) {
           ctx.beginPath();
@@ -131,7 +145,6 @@ function drawPoses(poses) {
         }
       });
 
-      // 繪製骨架
       if (model) {
         const connections = poseDetection.util.getAdjacentPairs(model);
         connections.forEach(([i, j]) => {
@@ -149,96 +162,147 @@ function drawPoses(poses) {
       }
     });
 
-    const angles = calculateAllAngles(pose.keypoints);
+    const angles = calculateAllAngles(pose.keypoints3D);
     displayAngles(ctx, angles);
 
+    const remapAngles = angleMapping(angles);
+
     if (linkRobot.classList.contains('checked')) {
-      Object.keys(window.viewer.robot.joints).forEach((jointName, index) => {
-        window.viewer.setJointValue(jointName, Object.entries(angles)[index][1] * DEG2RAD);
+      Object.keys(window.viewer.robot.joints).slice(0, 6).map((jointName, index) => {
+        window.viewer.setJointValue(jointName, Object.entries(remapAngles)[index][1] * DEG2RAD);
       });
     }
   }
+
+  // if (poses.length > 0) {
+  //   const pose = poses[0];
+  //   pose.keypoints3D.forEach(keypoint => {
+  //     if (keypoint.score > 0.3) {
+        
+  //       const [x, y] = project3DTo2D(keypoint.x, keypoint.y, keypoint.z);
+  //       ctx.beginPath();
+  //       ctx.arc(x * scaleX, y * scaleY, keyPointRadius, 0, 2 * Math.PI);
+  //       ctx.fillStyle = 'blue';
+  //       ctx.fill();
+  //     }
+  //   });
+  // }
 }
 
-function calculateAllAngles(keypoints) {
+function angleMapping(angles) {
+  const out = [];
+
+  out.A1 = angles.A1 > 90 ? 90 : angles.A1;
+  out.A1 = angles.A1 < -90 ? -90 : angles.A1;
+  out.A1 = map(out.A1, 90, -90, -110, 110);
+
+  out.A2 = angles.A2 > 180 ? 180 : angles.A2;
+  out.A2 = angles.A2 < -180 ? -180 : angles.A2;
+  out.A2 = map(angles.A2, 60, 0, -50, 0);
+
+  out.A3 = angles.A3 > 180 ? 180 : angles.A3;
+  out.A3 = angles.A3 < -180 ? -180 : angles.A3;
+  out.A3 = map(angles.A3, 0, 180, -80, 90);
+
+  out.A4 = 0;
+
+  out.A5 = angles.A5 > 180 ? 180 : angles.A5;
+  out.A5 = angles.A5 < -180 ? -180 : angles.A5;
+  out.A5 = map(angles.A5, 180, 40, 100, 0);
+
+  out.A6 = 0;
+
+  return out;
+}
+
+function map(input, in_min, in_max, out_min, out_max) {
+  return (input - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+function project3DTo2D(x, y, z) {
+  const focalLength = 1000;
+  const x2d = (x * focalLength) / (z + focalLength);
+  const y2d = (y * focalLength) / (z + focalLength);
+  return [x2d, y2d];
+}
+
+let angleDefinitions = [];
+function calculateAllAngles(keypoints3D) {
   const angles = {};
 
-  // const angleDefinitions = [
-  //   { name: "Left Elbow", points: [5, 7, 9] },
-  //   { name: "Right Elbow", points: [6, 8, 10] },
-  //   { name: "Left Shoulder", points: [11, 5, 7] },
-  //   { name: "Right Shoulder", points: [12, 6, 8] },
-  //   { name: "Left Hip", points: [5, 11, 13] },
-  //   { name: "Right Hip", points: [6, 12, 14] },
-  //   { name: "Left Knee", points: [11, 13, 15] },
-  //   { name: "Right Knee", points: [12, 14, 16] }
-  // ];
+  console.log(keypoints3D[24], keypoints3D[12], keypoints3D[14]);
 
-  const angleDefinitions = [
-    { name: "A1", points: [6, 5, "horizontal"] },
-    { name: "A2", points: [6, 12, "vertical"] },
-    { name: "A3", points: [12, 6, 8] },
-    { name: "A4", points: [6, 8, 10] },
-    { name: "A5", points: [6, 12, 14] },
-    { name: "A6", points: [12, 14, 16] }
+  angleDefinitions = [
+    { name: "A1", points: [12, 11, "horizontal"], dimen: "3D" },
+    { name: "A2", points: [12, 24, "vertical"], dimen: "3D" },
+    { name: "A3", points: [24, 12, 14], point2: [23, 11, 13], dimen: "2D" },
+    { name: "A4", points: [12, 14, 16], dimen: "2D" },
+    { name: "A5", points: [22, 16, 14], dimen: "2D" },
+    { name: "A6", points: [22, 16, 20], dimen: "2D" }
   ];
 
   angleDefinitions.forEach(def => {
-    const [a, b, c] = def.points.map(i => typeof i === 'string' ? i : keypoints[i]);
+    const [a, b, c] = def.points.map(i => typeof i === 'string' ? i : keypoints3D[i]);
     if (a.score > 0.2 && b.score > 0.2) {
-      angles[def.name] = calculateAngle(a, b, c);
+      if (def.dimen == "2D") {
+        a.z = 0; b.z = 0; c.z = 0;
+      }
+      angles[def.name] = calculateAngle3D(a, b, c);
+      if (def.point2 !== undefined) {
+        const [a, b, c] = def.point2.map(i => typeof i === 'string' ? i : keypoints3D[i]);
+        const angle = calculateAngle3D(a, b, c);
+        if (angles[def.name] < angle)
+          angles[def.name] = angle;
+      }
     }
   });
 
   return angles;
 }
 
-function distance(p1, p2) {
-  return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-}
-
-function calculateAngle(...args) {
-
+function calculateAngle3D(...args) {
   const A = args[0];
   const B = args[1];
 
   // Vector from A to B
   let dx = B.x - A.x;
   let dy = B.y - A.y;
+  let dz = B.z - A.z;
 
   if (args[2] === "horizontal") {
-
-    // Calculate angle in radians
-    let angleRad = Math.atan2(dy, dx);
-
-    // Convert radians to degrees
-    let angleDeg = -angleRad * (180 / Math.PI);
-
-    return angleDeg;
+    // Calculate angle in the XZ plane (horizontal)
+    let angleRad = Math.atan2(dz, dx);
+    return -angleRad * (180 / Math.PI);
 
   } else if (args[2] === "vertical") {
-
-    // Calculate angle in radians
-    let angleRad = Math.atan2(dx, dy); // Swap dx and dy for vertical angle
-
-    // Convert radians to degrees
-    let angleDeg = angleRad * (180 / Math.PI);
-
-    return angleDeg;
+    // Calculate angle in the YZ plane (vertical)
+    let angleRad = Math.atan2(Math.sqrt(dx*dx + dz*dz), dy);
+    return angleRad * (180 / Math.PI);
 
   } else if (args.length === 3) {
-
     const C = args[2];
 
-    const AB = distance(A, B);
-    const BC = distance(B, C);
-    const AC = distance(A, C);
+    // Calculate vectors
+    const AB = { x: B.x - A.x, y: B.y - A.y, z: B.z - A.z };
+    const BC = { x: B.x - C.x, y: B.y - C.y, z: B.z - C.z };
 
-    // Calculate angle using law of cosines
-    return Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB)) * (180 / Math.PI);
+    // Calculate dot product
+    const dotProduct = AB.x * BC.x + AB.y * BC.y + AB.z * BC.z;
+
+    // Calculate magnitudes
+    const magnitudeAB = Math.sqrt(AB.x*AB.x + AB.y*AB.y + AB.z*AB.z);
+    const magnitudeBC = Math.sqrt(BC.x*BC.x + BC.y*BC.y + BC.z*BC.z);
+
+    // Calculate angle
+    const angle = Math.acos(dotProduct / (magnitudeAB * magnitudeBC));
+    return angle * (180 / Math.PI);
   } else {
     throw new Error("Invalid number of arguments. Use either 2 or 3 arguments.");
   }
+}
+
+function distance(p1, p2) {
+  return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
 }
 
 function displayAngles(context, angles) {
@@ -287,7 +351,7 @@ function togglePlayPause() {
   if (video.paused) {
     video.play();
     playPauseAnimation.className = 'play-pause-animation play';
-    if (linkToggle.classList.contains('checked'))
+    if (poseDetectToggle.classList.contains('checked'))
       requestAnimationFrame(estimatePoses);
   } else {
     video.pause();
@@ -342,7 +406,7 @@ function updateProgress() {
   let thickness = progressThumb.clientWidth;
   progressFilled.style.width = `calc(${progress}% - ${thickness / 2}px)`;
   progressThumb.style.left = `calc(${progress}% - ${thickness / 2}px)`;
-  if (linkToggle.classList.contains('checked') || video.paused)
+  if (poseDetectToggle.classList.contains('checked') || video.paused)
     estimatePoses();
 }
 

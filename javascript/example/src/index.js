@@ -22,7 +22,6 @@ window.viewer = document.querySelector('urdf-viewer');
 const limitsToggle = document.getElementById('ignore-joint-limits');
 const collisionToggle = document.getElementById('collision-toggle');
 const radiansToggle = document.getElementById('radians-toggle');
-const autocenterToggle = document.getElementById('autocenter-toggle');
 const upSelect = document.getElementById('up-select');
 const sliderList = document.querySelector('#controls ul');
 const controlsel = document.getElementById('controls');
@@ -69,10 +68,6 @@ isLoop.addEventListener('click', () => {
         loop = false;
 });
 
-autocenterToggle.addEventListener('click', () => {
-    autocenterToggle.classList.toggle('checked');
-    viewer.noAutoRecenter = !autocenterToggle.classList.contains('checked');
-});
 
 upSelect.addEventListener('change', () => viewer.up = upSelect.value);
 
@@ -398,6 +393,9 @@ window.newCard = function () {
         }
     });
 
+    cardContainer.childNodes.forEach(child => child.classList.remove('highlighted'));
+    card.classList.add('highlighted');
+
     new Sortable(cardContainer, {
         ghostClass: 'highlighted', // The class applied to the hovered swap item
         animation: 150,
@@ -595,6 +593,21 @@ refreshBtn.addEventListener('click', () => {
     cardContainer.childNodes.forEach((card, index) => {
         if (card.querySelector('.number')) {
             card.querySelector('.number').innerText = index + 1;
+        }
+    });
+
+    cardContainer.childNodes.forEach(child => {
+        if (child.classList.contains('highlighted')) {
+            let jointAngles = Object.keys(viewer.robot.joints)
+                .slice(0, 6)
+                .map(key => {
+                    let angleInDegrees = viewer.robot.joints[key].angle * RAD2DEG;
+                    let formattedAngle = angleInDegrees.toFixed(1);
+                    return formattedAngle.endsWith('.0') ? parseInt(angleInDegrees) : formattedAngle;
+                });
+            
+            child.querySelector('.angles').innerHTML =
+                `<div>${jointAngles.map(angle => `<div>${angle}</div>`).join('')}</div>`;
         }
     });
 });
