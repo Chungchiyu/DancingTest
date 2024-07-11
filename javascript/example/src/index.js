@@ -221,7 +221,6 @@ viewer.addEventListener('urdf-processed', () => {
             slider.addEventListener('input', () => {
                 viewer.setJointValue(joint.name, slider.value);
                 animToggle.classList.remove('checked');
-                inputAngles();
                 li.update();
             });
 
@@ -229,7 +228,6 @@ viewer.addEventListener('urdf-processed', () => {
                 // const degMultiplier = radiansToggle.classList.contains('checked') ? 1.0 : RAD2DEG;
                 const degMultiplier = RAD2DEG;
                 viewer.setJointValue(joint.name, input.value * degMultiplier);
-                inputAngles();
                 animToggle.classList.remove('checked');
                 li.update();
             });
