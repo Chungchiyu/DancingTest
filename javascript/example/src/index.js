@@ -8,7 +8,6 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import URDFManipulator from '../../src/urdf-manipulator-element.js';
 import * as math from 'mathjs';
 import Sortable, { Swap } from 'sortablejs';
-import { degToRad } from 'three/src/math/MathUtils.js';
 
 Sortable.mount(new Swap());
 

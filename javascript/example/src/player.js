@@ -1,5 +1,3 @@
-import { output } from "three/examples/jsm/nodes/Nodes.js";
-
 window.video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 window.progressContainer = document.getElementById('progress-container');
