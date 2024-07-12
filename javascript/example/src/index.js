@@ -493,8 +493,10 @@ document.addEventListener('WebComponentsReady', () => {
     animToggle.addEventListener('click', () => {
         animToggle.classList.toggle('checked');
         startTime = Date.now() - window.video.currentTime * 1e3;
-        if (animToggle.classList.contains('checked'))
+        if (animToggle.classList.contains('checked')) {
             window.video.play();
+            window.linkRobot.classList.remove('checked');
+        }
         else
             window.video.pause();
     });
@@ -503,7 +505,7 @@ document.addEventListener('WebComponentsReady', () => {
     viewer.addEventListener('manipulate-start', e => animToggle.classList.remove('checked'));
     viewer.addEventListener('urdf-processed', e => updateArmPosition());
     updateLoop();
-    viewer.camera.position.set(-5.5 / 3, 3.5 / 3, 5.5 / 3);
+    viewer.camera.position.set(0,1,-2.5);
     // viewer.control
     viewer.noAutoRecenter = true;
 
@@ -605,6 +607,8 @@ refreshBtn.addEventListener('click', () => {
             
             child.querySelector('.angles').innerHTML =
                 `<div>${jointAngles.map(angle => `<div>${angle}</div>`).join('')}</div>`;
+
+            child.querySelector('img').src = capture();
         }
     });
 });
@@ -621,4 +625,5 @@ homeBtn.addEventListener('click', () => {
     var joint = new Array(6).fill(0);
     for (let angle in joint)
         viewer.setJointValue(`joint_${parseInt(angle) + 1}`, joint[angle]);
+    viewer.camera.position.set(0,1,-2.5);
 })

@@ -14,11 +14,12 @@ const leftSide = document.getElementById('left-side');
 const rightSide = document.getElementById('right-side');
 const handle = document.querySelector('.divider');
 const poseDetectToggle = document.getElementById('poseDetect');
-const linkRobot = document.getElementById('link-robot');
+window.linkRobot = document.getElementById('link-robot');
 const DEG2RAD = Math.PI / 180;
 
 let poseNetLoaded = false;
 let lastPoses = [];
+let lastPoseAngles;
 let videoAspectRatio = 16 / 9;
 let lowResCanvas;
 let lowResolution = 720;
@@ -164,6 +165,7 @@ function drawPoses(poses) {
     displayAngles(ctx, angles);
 
     const remapAngles = angleMapping(angles);
+    lastPoseAngles = remapAngles;
 
     if (linkRobot.classList.contains('checked')) {
       Object.keys(window.viewer.robot.joints).slice(0, 6).map((jointName, index) => {
@@ -206,7 +208,7 @@ function angleMapping(angles) {
 
   out.A5 = angles.A5 > 180 ? 180 : angles.A5;
   out.A5 = angles.A5 < -180 ? -180 : angles.A5;
-  out.A5 = map(angles.A5, 180, 40, 100, 0);
+  out.A5 = map(angles.A5, 180, 90, 0, -90);
 
   out.A6 = 0;
 
@@ -235,7 +237,7 @@ function calculateAllAngles(keypoints3D) {
     { name: "A2", points: [12, 24, "vertical"], dimen: "3D" },
     { name: "A3", points: [24, 12, 14], point2: [23, 11, 13], dimen: "2D" },
     { name: "A4", points: [12, 14, 16], dimen: "2D" },
-    { name: "A5", points: [22, 16, 14], dimen: "2D" },
+    { name: "A5", points: [14, 16, 20], dimen: "2D" },
     { name: "A6", points: [22, 16, 20], dimen: "2D" }
   ];
 
@@ -375,9 +377,8 @@ recordDataButton.addEventListener('click', recordData);
 
 function recordData() {
   const currentTime = video.currentTime;
-  const angles = calculateAllAngles(lastPoses[0].keypoints);
 
-  jointsData = [{ time: currentTime, angles: angles }];
+  jointsData = [{ time: currentTime, angles: lastPoseAngles }];
   addMarkerToProgressBar(currentTime);
 
   window.newCard();
