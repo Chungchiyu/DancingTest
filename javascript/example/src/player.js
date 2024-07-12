@@ -480,6 +480,7 @@ function closeVideo() {
   document.querySelector('.controls').style.display = 'none';
   closeButton.style.display = 'none';
   poseButton.style.display = 'none';
+  document.querySelector('.modal').style.display = 'none';
   const thumbnails = document.querySelectorAll('.progress-thumbnail');
   thumbnails.forEach(thumbnail => thumbnail.remove());
   progressContainer.querySelectorAll('.progress-marker').forEach(mark => mark.remove());
@@ -555,10 +556,14 @@ poseButton.addEventListener('click', () => {
     e.innerHTML = `${angleDefinitions[index].points}`;
   });
 
+  document.querySelector('.modal').style.zIndex = '1000';
   document.querySelector('.modal').classList.toggle('show');
   document.querySelector('.overlay').classList.toggle('show');
 });
 document.querySelector('.overlay').addEventListener('click', () => {
   document.querySelector('.modal').classList.remove('show');
   document.querySelector('.overlay').classList.remove('show');
+  setTimeout(() => {
+    document.querySelector('.modal').style.zIndex = '-1';
+  }, 500);
 });
