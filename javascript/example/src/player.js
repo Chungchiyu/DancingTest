@@ -127,38 +127,40 @@ function drawPoses(poses) {
   const scaleY = canvas.height / video.videoHeight;
 
   const minDimension = Math.min(canvas.width, canvas.height);
-  const keyPointRadius = minDimension * 0.01;
+  const keyPointRadius = minDimension * 0.008;
   const lineWidth = minDimension * 0.005;
 
   if (poses.length > 0) {
     const pose = poses[0];
 
     poses.forEach(pose => {
-      
-      pose.keypoints.forEach(keypoint => {
-        if (keypoint.score > 0.3) {
+  
+      const connections = poseDetection.util.getAdjacentPairs(model);
+      connections.forEach(([i, j]) => {
+        const kp1 = pose.keypoints[i];
+        const kp2 = pose.keypoints[j];
+        if (kp1.score > 0.3 && kp2.score > 0.3) {
           ctx.beginPath();
-          ctx.arc(keypoint.x * scaleX, keypoint.y * scaleY, keyPointRadius, 0, 2 * Math.PI);
-          ctx.fillStyle = 'red';
-          ctx.fill();
+          ctx.moveTo(kp1.x * scaleX, kp1.y * scaleY);
+          ctx.lineTo(kp2.x * scaleX, kp2.y * scaleY);
+          ctx.strokeStyle = 'blue';
+          ctx.lineWidth = lineWidth;
+          ctx.stroke();
         }
       });
 
-      if (model) {
-        const connections = poseDetection.util.getAdjacentPairs(model);
-        connections.forEach(([i, j]) => {
-          const kp1 = pose.keypoints[i];
-          const kp2 = pose.keypoints[j];
-          if (kp1.score > 0.3 && kp2.score > 0.3) {
-            ctx.beginPath();
-            ctx.moveTo(kp1.x * scaleX, kp1.y * scaleY);
-            ctx.lineTo(kp2.x * scaleX, kp2.y * scaleY);
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = lineWidth;
-            ctx.stroke();
-          }
-        });
-      }
+      pose.keypoints.forEach((keypoint, index) => {
+        const noDraw = index < 10 && index != 2 && index != 5 && index != 9 && index != 10;
+        if (keypoint.score > 0.3 && !noDraw) {
+          ctx.beginPath();
+          ctx.arc(keypoint.x * scaleX, keypoint.y * scaleY, keyPointRadius, 0, 2 * Math.PI);
+          ctx.fillStyle = 'blue';
+          ctx.fill();
+          ctx.strokeStyle = 'yellow'
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      });
     });
 
     const angles = calculateAllAngles(pose.keypoints3D);
@@ -547,7 +549,12 @@ async function estimatePoses() {
   }
 }
 
-document.querySelector('.pose-button').addEventListener('click', () => {
+poseButton.addEventListener('click', () => {
+  const poseList = document.querySelectorAll('.field');
+  poseList.forEach((e, index) => {
+    e.innerHTML = `${angleDefinitions[index].points}`;
+  });
+
   document.querySelector('.modal').classList.toggle('show');
   document.querySelector('.overlay').classList.toggle('show');
 });
