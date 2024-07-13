@@ -77,6 +77,10 @@ closeButton.addEventListener('click', closeVideo);
 poseDetectToggle.addEventListener('click', () => { 
   poseDetectToggle.classList.toggle('checked');
   estimatePoses();
+  if (poseDetectToggle.classList.contains('checked'))
+    canvas.style.display = '';
+  else
+    canvas.style.display = 'none';
  });
 
 linkRobot.addEventListener('click', () => { 
@@ -348,6 +352,7 @@ async function loadVideo(event) {
 const playPauseAnimation = document.getElementById('play-pause-animation');
 
 canvas.addEventListener('click', togglePlayPause);
+video.addEventListener('click', togglePlayPause);
 
 function togglePlayPause() {
   if (video.paused) {
@@ -537,23 +542,25 @@ window.addEventListener('resize', () => {
 // }
 
 async function estimatePoses() {
-  console.log('estimation');
-  if (video.readyState >= 2 && poseNetLoaded) {
-    const lowResContext = lowResCanvas.getContext('2d');
-    lowResContext.drawImage(video, 0, 0, lowResCanvas.width, lowResCanvas.height);
+  if (poseDetectToggle.classList.contains('checked')) {
+    console.log('estimation');
+    if (video.readyState >= 2 && poseNetLoaded) {
+      const lowResContext = lowResCanvas.getContext('2d');
+      lowResContext.drawImage(video, 0, 0, lowResCanvas.width, lowResCanvas.height);
 
-    const poses = await detectPose(detector, video);
-    drawPoses(poses);
-  }
-  if (!video.paused) {
-    requestAnimationFrame(estimatePoses);
+      const poses = await detectPose(detector, video);
+      drawPoses(poses);
+    }
+    if (!video.paused) {
+      requestAnimationFrame(estimatePoses);
+    }
   }
 }
 
 poseButton.addEventListener('click', () => {
   const poseList = document.querySelectorAll('.field');
   poseList.forEach((e, index) => {
-    e.innerHTML = `${angleDefinitions[index].points}`;
+    e.innerHTML = `${angleDefinitions[index].name}: ${angleDefinitions[index].points}`;
   });
 
   document.querySelector('.modal').style.zIndex = '1000';

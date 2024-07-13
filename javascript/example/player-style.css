@@ -57,7 +57,15 @@ video {
   outline: none;
   display: none;
   z-index: 0;
+  cursor: pointer;
 }
+/* video:hover + .play-pause-animation {
+  display: block;
+  animation: fadeInOut 1s ease forwards;
+}.play-pause-animation::before {
+  border-width: 12px 0 12px 20px;
+  border-color: transparent transparent transparent white;
+} */
 
 #canvas {
   position: absolute;
