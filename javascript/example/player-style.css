@@ -326,7 +326,7 @@ video {
   cursor: pointer;
   font-size: 18px; /* Centered X */
   font-weight: bold; /* Bold X */
-  display: none; /* Initially hidden */
+  /* display: none; Initially hidden */
 }
 /* .pose-button:hover {
   background-color: darkblue;

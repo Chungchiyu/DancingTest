@@ -225,86 +225,65 @@ function map(input, in_min, in_max, out_min, out_max) {
   return (input - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-function project3DTo2D(x, y, z) {
-  const focalLength = 1000;
-  const x2d = (x * focalLength) / (z + focalLength);
-  const y2d = (y * focalLength) / (z + focalLength);
-  return [x2d, y2d];
-}
-
-let angleDefinitions = [];
-function calculateAllAngles(keypoints3D) {
+function calculateAllAngles(keypoints3D, groupName = "default") {
   const angles = {};
-
-  console.log(keypoints3D[24], keypoints3D[12], keypoints3D[14]);
-
-  angleDefinitions = [
-    { name: "A1", points: [12, 11, "horizontal"], dimen: "3D" },
-    { name: "A2", points: [12, 24, "vertical"], dimen: "3D" },
-    { name: "A3", points: [24, 12, 14], point2: [23, 11, 13], dimen: "2D" },
-    { name: "A4", points: [12, 14, 16], dimen: "2D" },
-    { name: "A5", points: [14, 16, 20], dimen: "2D" },
-    { name: "A6", points: [22, 16, 20], dimen: "2D" }
-  ];
-
-  angleDefinitions.forEach(def => {
-    const [a, b, c] = def.points.map(i => typeof i === 'string' ? i : keypoints3D[i]);
-    if (a.score > 0.2 && b.score > 0.2) {
-      if (def.dimen == "2D") {
-        a.z = 0; b.z = 0; c.z = 0;
+  const group = window.groups.find(g => g.name === groupName);
+  if (!group || !group.data) {
+    console.error('Group not found or group data is empty');
+    return angles;
+  }
+  Object.entries(group.data).forEach(([key, value]) => {
+    const points = value.split(',').map(id => id.trim());
+    
+    if (points.length === 3) {
+      const [a, b, c] = points.map(i => {
+        if (["OH", "DV", "RH", "IH", "UV", "LH"].includes(i)) return i;
+        return keypoints3D[parseInt(i)] || { x: 0, y: 0, z: 0, score: 0 };
+      });
+      if ((a.score > 0.2 && b.score > 0.2) || typeof c === 'string') {
+        angles[key] = calculateAngle3D(a, b, c);
+      } else {
+        console.warn(`Low confidence for angle ${key}, skipping calculation`);
       }
-      angles[def.name] = calculateAngle3D(a, b, c);
-      if (def.point2 !== undefined) {
-        const [a, b, c] = def.point2.map(i => typeof i === 'string' ? i : keypoints3D[i]);
-        const angle = calculateAngle3D(a, b, c);
-        if (angles[def.name] < angle)
-          angles[def.name] = angle;
-      }
+    } else {
+      console.warn(`Invalid number of points for angle ${key}, expected 3 but got ${points.length}`);
     }
   });
-
   return angles;
 }
 
-function calculateAngle3D(...args) {
-  const A = args[0];
-  const B = args[1];
-
-  // Vector from A to B
-  let dx = B.x - A.x;
-  let dy = B.y - A.y;
-  let dz = B.z - A.z;
-
-  if (args[2] === "horizontal") {
-    // Calculate angle in the XZ plane (horizontal)
-    let angleRad = Math.atan2(dz, dx);
-    return -angleRad * (180 / Math.PI);
-
-  } else if (args[2] === "vertical") {
-    // Calculate angle in the YZ plane (vertical)
-    let angleRad = Math.atan2(Math.sqrt(dx*dx + dz*dz), dy);
-    return angleRad * (180 / Math.PI);
-
-  } else if (args.length === 3) {
-    const C = args[2];
-
-    // Calculate vectors
-    const AB = { x: B.x - A.x, y: B.y - A.y, z: B.z - A.z };
-    const BC = { x: B.x - C.x, y: B.y - C.y, z: B.z - C.z };
-
-    // Calculate dot product
-    const dotProduct = AB.x * BC.x + AB.y * BC.y + AB.z * BC.z;
-
-    // Calculate magnitudes
-    const magnitudeAB = Math.sqrt(AB.x*AB.x + AB.y*AB.y + AB.z*AB.z);
-    const magnitudeBC = Math.sqrt(BC.x*BC.x + BC.y*BC.y + BC.z*BC.z);
-
-    // Calculate angle
-    const angle = Math.acos(dotProduct / (magnitudeAB * magnitudeBC));
-    return angle * (180 / Math.PI);
-  } else {
-    throw new Error("Invalid number of arguments. Use either 2 or 3 arguments.");
+function calculateAngle3D(A, B, C) {
+  // Vector from B to A
+  const BA = { x: A.x - B.x, y: A.y - B.y, z: A.z - B.z };
+  
+  let axisVector;
+  switch(C) {
+    case "OH": axisVector = { x: 0, y: 0, z: -1 }; break;
+    case "DV": axisVector = { x: 0, y: -1, z: 0 }; break;
+    case "RH": axisVector = { x: 1, y: 0, z: 0 }; break;
+    case "IH": axisVector = { x: 0, y: 0, z: 1 }; break;
+    case "UV": axisVector = { x: 0, y: 1, z: 0 }; break;
+    case "LH": axisVector = { x: -1, y: 0, z: 0 }; break;
+    default:
+      // If C is not one of the special cases, calculate as before
+      const BC = { x: C.x - B.x, y: C.y - B.y, z: C.z - B.z };
+      return calculateAngleBetweenVectors(BA, BC);
   }
+  
+  return calculateAngleBetweenVectors(BA, axisVector);
+}
+
+function calculateAngleBetweenVectors(v1, v2) {
+  // Calculate dot product
+  const dotProduct = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+  
+  // Calculate magnitudes
+  const magnitudeV1 = Math.sqrt(v1.x*v1.x + v1.y*v1.y + v1.z*v1.z);
+  const magnitudeV2 = Math.sqrt(v2.x*v2.x + v2.y*v2.y + v2.z*v2.z);
+  
+  // Calculate angle
+  const angle = Math.acos(dotProduct / (magnitudeV1 * magnitudeV2));
+  return angle * (180 / Math.PI);
 }
 
 function distance(p1, p2) {
@@ -573,4 +552,10 @@ document.querySelector('.overlay').addEventListener('click', () => {
   setTimeout(() => {
     document.querySelector('.modal').style.zIndex = '-1';
   }, 500);
+});
+
+let angle_field = document.querySelectorAll('fields');
+
+angle_field.children.addEventListener('click', () => {
+
 });

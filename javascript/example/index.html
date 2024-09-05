@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
     <link href="./styles.css" type="text/css" rel="stylesheet" />
     <link href="./player-style.css" type="text/css" rel="stylesheet" />
+    <link href="./human.css" type="text/css" rel="stylesheet" />
     <script src="./src/redirect.js"></script>
 </head>
 
@@ -47,15 +48,50 @@
                 <button class="pose-button" id="pose-button">+</button>
                 <div class="overlay"></div>
                 <div class="modal">
-                    <div class="fields">
-                        <div class="field">A1: 12, 11, 水平</div>
-                        <div class="field">A2: 12, 24, 垂直</div>
-                        <div class="field">A3: 24, 12, 14</div>
-                        <div class="field">A4: 12, 14, 16</div>
-                        <div class="field">A5: 22, 16, 14</div>
-                        <div class="field">A6: 22, 16, 20</div>
+                    <div class="left-panel">
+                        <div id="angleProjections" class="frame">
+                            <h2>Angle Projections</h2>
+                            <div class="angleCard">
+                                <div class="angleCard-label">J1</div>
+                                <div class="angleCard-content">12,11,OH</div>
+                            </div>
+                            <div class="angleCard">
+                                <div class="angleCard-label">J2</div>
+                                <div class="angleCard-content">12,24,UV</div>
+                            </div>
+                            <div class="angleCard">
+                                <div class="angleCard-label">J3</div>
+                                <div class="angleCard-content">24,12,14</div>
+                            </div>
+                            <div class="angleCard">
+                                <div class="angleCard-label">J4</div>
+                                <div class="angleCard-content">12,14,16</div>
+                            </div>
+                            <div class="angleCard">
+                                <div class="angleCard-label">J5</div>
+                                <div class="angleCard-content">14,16,20</div>
+                            </div>
+                            <div class="angleCard">
+                                <div class="angleCard-label">J6</div>
+                                <div class="angleCard-content">22,16,20</div>
+                            </div>
+                        </div>
+                        <div id="groups" class="frame">
+                            <h2>Groups</h2>
+                            <div id="groups-container">
+                                <!-- Group cards will be added here dynamically -->
+                            </div>
+                        </div>
                     </div>
-                    <img src="../docs/skeleton-number.png" alt="Diagram Image">
+                    <div class="main-content">
+                        <div id="figure">
+                            <svg id="svgLayer"></svg>
+                        </div>
+                        <div id="newGroupContainer">
+                            <input type="text" id="newGroupName" placeholder="New group name">
+                            <button id="addGroupBtn">Add</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -67,10 +103,12 @@
             <urdf-viewer up="+Z" display-shadow tabindex="1"></urdf-viewer>
             <div id="menu">
                 <ul id="urdf-options" class="hidden">
-                    <li urdf="../../../urdf/Hiwin/hiwin_ra610_1476_support/urdf/ra610_1476.urdf" color="#3b3b3b ">Hiwin 1476</li>
-                    <li urdf="../../../urdf/Hiwin/hiwin_ra620_1621_support/urdf/ra620_1621.urdf" color="#211e3e">Hiwin 1621</li>
+                    <li urdf="../../../urdf/Hiwin/hiwin_ra610_1476_support/urdf/ra610_1476.urdf" color="#3b3b3b ">Hiwin
+                        1476</li>
+                    <li urdf="../../../urdf/Hiwin/hiwin_ra620_1621_support/urdf/ra620_1621.urdf" color="#211e3e">Hiwin
+                        1621</li>
                 </ul>
-                
+
                 <div id="controls">
                     <div id="toggle-controls"></div>
                     <div id="is-loop" class="toggle">Loop Animation</div>
@@ -103,9 +141,9 @@
         </div>
     </div>
 
+    <script src="./src/human.js"></script>
     <script src="./src/index.js"></script>
     <script src="./src/player.js"></script>
-    <!-- <script src="./src/pose-track.js"></script> -->
 </body>
 
 </html>
